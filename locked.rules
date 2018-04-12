@@ -1,0 +1,13 @@
+#!/usr/sbin/nft
+
+table ip filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    iif lo accept;
+  }
+  
+  chain output {
+    type filter hook input priority 0; policy drop;
+    oif lo accept;
+  }
+}

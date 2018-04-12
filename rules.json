@@ -1,0 +1,45 @@
+{
+  "rules": {
+    "incoming": {
+      "global_icmp": "false",
+      "global_tcp": [],
+      "global_udp": [],
+      "trusted_icmp": "false",
+      "trusted_tcp": [
+        "22"
+      ],
+      "trusted_udp": [],
+      "untrusted_icmp": "false",
+      "untrusted_tcp": [],
+      "untrusted_udp": []
+    },
+    "outgoing": {
+      "global_icmp": "false",
+      "global_tcp": [
+        "443"
+      ],
+      "global_udp": [
+        "53",
+        "500",
+        "1701",
+        "4500"
+      ],
+      "trusted_icmp": "true",
+      "trusted_tcp": [
+        "22",
+        "80",
+        "1900"
+      ],
+      "trusted_udp": [
+        "123",
+        "137",
+        "138",
+        "1900",
+        "5353"
+      ],
+      "untrusted_icmp": "false",
+      "untrusted_tcp": [],
+      "untrusted_udp": []
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "interfaces": {
+    "trusted": [
+      "lo", "ppp0"
+    ],
+    "untrusted": [
+      "enp2s0f0", "wlp3s0b1"
+    ]
+  }
+}

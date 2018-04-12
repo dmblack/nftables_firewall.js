@@ -1,0 +1,30 @@
+{
+  "name": "nftables_firewall.js",
+  "version": "0.0.1",
+  "description": "Is a test / proof of concept firewall using NodeJS and nftables/nfqueue.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dmblack/nftables_firewall.js.git"
+  },
+  "keywords": [
+    "firewall",
+    "nfqueue",
+    "nftables",
+    "libpcap",
+    "pcap"
+  ],
+  "author": "Dustyn Blackmore <dustyn@remexchange.net>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dmblack/nftables_firewall.js/issues"
+  },
+  "homepage": "https://github.com/dmblack/nftables_firewall.js#readme",
+  "dependencies": {
+    "nfqueue": "^0.3.1",
+    "pcap": "https://github.com/mranney/node_pcap.git"
+  }
+}

@@ -1,0 +1,23 @@
+#!/usr/sbin/nft
+
+table ip filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    counter;
+    meta mark 666 counter drop comment "NodeJS Rejected" ;
+    meta mark 999 counter accept comment "NodeJS Accepted" ;
+    ct state { invalid, untracked } counter drop;
+    ct state { established, related } counter accept;
+    counter;
+  }
+  
+  chain output {
+    type filter hook output priority 0; policy drop;
+    counter;
+    meta mark 666 counter drop comment "NodeJS Rejected" ;
+    meta mark 999 counter accept comment "NodeJS Accepted" ;
+    ct state { invalid, untracked } counter drop;
+    ct state { established, related } counter accept;
+    counter;
+  }
+}
