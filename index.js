@@ -9,6 +9,9 @@ const { exec } = require('child_process');
 const NF_ACCEPT = 1; // Accept packet (but no longer seen / disowned by conntrack)
 const NF_REJECT = 4; // Requeue packet (Which we then use a mark to determine the action)
 
+let packetsAccepted = 0;
+let packetsRejected = 0;
+
 const interfaces = []
 
 function execute (command) {
@@ -25,7 +28,6 @@ function execute (command) {
 
 // Flushes all rules - entirely blank.
 function flushRules () {
-  console.log('flush rules');
   return execute('nft flush ruleset');
 }
 
@@ -36,13 +38,11 @@ function lockRules () {
 
 // Sets base rules, with default to 'drop', but allows established and related connections.
 function baseRules () {
-  console.log('base rules');
   return execute('nft -f ./base.rules');
 }
 
 // Sets base rules, with default to 'drop', but allows established and related connections.
 function insertFinalCounters () {
-  console.log('final counters');
   return Promise.all([
     execute('nft add rule ip filter input counter'),
     execute('nft add rule ip filter output counter'),
@@ -96,135 +96,108 @@ function setupInterfaces () {
 
 function bindQueueHandlers () {
   interfaces.forEach(interface => {
-    console.log('Binding for interface: ' + interface);
     interface.queueIn = nfq.createQueueHandler(interface.number, 65535, (nfpacket) => {
       let packet = new IPv4().decode(nfpacket.payload, 0);
       let thisVerdict = NF_REJECT;
 
       switch (packet.protocol) {
         case 6:
-          console.log('tcp')
           if (rules.incoming.global_tcp.includes(packet.payload.dport.toString()) === true) {
-            console.log('accept global');
             thisVerdict = NF_ACCEPT
           } else {
             if (interface.trusted) {
               if (rules.incoming.trusted_tcp.includes(packet.payload.dport.toString()) === true) {
-                console.log('accept trusted');
                 thisVerdict = NF_ACCEPT
               }
             } else {
-              console.log('untrusted');
               if (rules.incoming.untrusted_tcp.includes(packet.payload.dport.toString()) === true) {
-                console.log('accept untrusted');
                 thisVerdict = NF_ACCEPT
               }
             }
           }
           break;
         case 17:
-          console.log('udp');
           if (rules.incoming.global_udp.includes(packet.payload.dport.toString()) === true) {
-            console.log('accept global');
             thisVerdict = NF_ACCEPT
           } else {
             if (interface.trusted) {
-              console.log('trusted');
               if (rules.incoming.trusted_udp.includes(packet.payload.dport.toString()) === true) {
-                console.log('accept trusted');
                 thisVerdict = NF_ACCEPT
               }
             } else {
-              console.log('untrusted');
               if (rules.incoming.untrusted_udp.includes(packet.payload.dport.toString()) === true) {
-                console.log('accept untrusted');
                 thisVerdict = NF_ACCEPT
               }
             }
           }
           break;
         default:
-          console.log('other');
           if (interface.trusted) {
-            console.log('trusted');
           } else {
-            console.log('untrusted');
           }
           break
       }
 
       // Allow us to set a META MARK for requeue and reject.
       if (thisVerdict === NF_REJECT) {
+        packetsRejected ++;
         nfpacket.setVerdict(thisVerdict, 666);
       } else {
+        packetsAccepted ++;
         nfpacket.setVerdict(4, 999);
       }
-
-      // console.log(packet.identification);
+      process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' - Rejected: ' + packetsRejected + '\r');
     });
     interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), 65535, (nfpacket) => {
-      console.log('packet received');
       let packet = new IPv4().decode(nfpacket.payload, 0);
       let thisVerdict = NF_REJECT;
       switch (packet.protocol) {
         case 6:
-          console.log('tcp')
           if (rules.outgoing.global_tcp.includes(packet.payload.dport.toString()) === true) {
-            console.log('accept global');
             thisVerdict = NF_ACCEPT
           } else {
             if (interface.trusted) {
-              console.log('trusted');
               if (rules.outgoing.trusted_tcp.includes(packet.payload.dport.toString()) === true) {
-                console.log('accept trusted');
                 thisVerdict = NF_ACCEPT
               }
             } else {
-              console.log('untrusted');
               if (rules.outgoing.untrusted_tcp.includes(packet.payload.dport.toString()) === true) {
-                console.log('accept untrusted');
                 thisVerdict = NF_ACCEPT
               }
             }
           }
           break;
         case 17:
-          console.log('udp');
           if (rules.outgoing.global_udp.includes(packet.payload.dport.toString()) === true) {
-            console.log('accept global');
             thisVerdict = NF_ACCEPT
           } else {
             if (interface.trusted) {
-              console.log('trusted');
               if (rules.outgoing.trusted_udp.includes(packet.payload.dport.toString()) === true) {
-                console.log('accept trusted');
                 thisVerdict = NF_ACCEPT
               }
             } else {
-              console.log('untrusted');
               if (rules.outgoing.untrusted_udp.includes(packet.payload.dport.toString()) === true) {
-                console.log('accept untrusted');
                 thisVerdict = NF_ACCEPT
               }
             }
           }
           break;
         default:
-          console.log('other');
           if (interface.trusted) {
-            console.log('trusted');
           } else {
-            console.log('untrusted');
           }
           break
       }
 
       // Allow us to set a META MARK for requeue and reject.
       if (thisVerdict === NF_REJECT) {
-        nfpacket.setVerdict(thisVerdict, 666);
+        packetsRejected ++;
+        nfpacket.setVerdict(thisVerdict, 777);
       } else {
+        packetsAccepted ++;
         nfpacket.setVerdict(4, 999);
       }
+      process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' - Rejected: ' + packetsRejected + '\r');
     });
   })
 }
@@ -238,7 +211,6 @@ baseRules().then(
       )
     )
 ).catch((err) => {
-  console.log(err);
   flushRules().then(lockRules());
 }
 )

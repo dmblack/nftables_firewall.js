@@ -4,8 +4,8 @@ table ip filter {
   chain input {
     type filter hook input priority 0; policy drop;
     counter;
-    meta mark 666 counter drop comment "NodeJS Rejected" ;
-    meta mark 999 counter accept comment "NodeJS Accepted" ;
+    meta mark 666 counter drop comment "NodeJS Rejected";
+    meta mark 999 counter accept comment "NodeJS Accepted";
     ct state { invalid, untracked } counter drop;
     ct state { established, related } counter accept;
     counter;
@@ -14,8 +14,9 @@ table ip filter {
   chain output {
     type filter hook output priority 0; policy drop;
     counter;
-    meta mark 666 counter drop comment "NodeJS Rejected" ;
-    meta mark 999 counter accept comment "NodeJS Accepted" ;
+    meta mark 666 counter drop comment "NodeJS Rejected";
+    meta mark 777 counter reject with icmp type admin-prohibited;
+    meta mark 999 counter accept comment "NodeJS Accepted";
     ct state { invalid, untracked } counter drop;
     ct state { established, related } counter accept;
     counter;
