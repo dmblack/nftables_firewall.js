@@ -9,6 +9,13 @@ const { exec } = require('child_process');
 const NF_ACCEPT = 1; // Accept packet (but no longer seen / disowned by conntrack)
 const NF_REJECT = 4; // Requeue packet (Which we then use a mark to determine the action)
 
+const PC_ICMP = 1;
+const PC_IGMP = 2;
+const PC_TCP = 6;
+const PC_UDP = 17;
+
+const buffer = 131070;
+
 let packetsAccepted = 0;
 let packetsRejected = 0;
 
@@ -96,105 +103,164 @@ function setupInterfaces () {
 
 function bindQueueHandlers () {
   interfaces.forEach(interface => {
-    interface.queueIn = nfq.createQueueHandler(interface.number, 65535, (nfpacket) => {
+    interface.queueIn = nfq.createQueueHandler(interface.number, buffer, (nfpacket) => {
       let packet = new IPv4().decode(nfpacket.payload, 0);
       let thisVerdict = NF_REJECT;
 
       switch (packet.protocol) {
-        case 6:
-          if (rules.incoming.global_tcp.includes(packet.payload.dport.toString()) === true) {
+        case PC_ICMP:
+          if (rules.incoming.global_icmp) {
             thisVerdict = NF_ACCEPT
           } else {
             if (interface.trusted) {
-              if (rules.incoming.trusted_tcp.includes(packet.payload.dport.toString()) === true) {
+              if (rules.incoming.trusted_icmp) {
                 thisVerdict = NF_ACCEPT
               }
             } else {
-              if (rules.incoming.untrusted_tcp.includes(packet.payload.dport.toString()) === true) {
+              if (rules.incoming.untrusted_icmp) {
                 thisVerdict = NF_ACCEPT
               }
             }
           }
           break;
-        case 17:
-          if (rules.incoming.global_udp.includes(packet.payload.dport.toString()) === true) {
+        case PC_IGMP:
+          if (rules.incoming.global_igmp) {
             thisVerdict = NF_ACCEPT
           } else {
             if (interface.trusted) {
-              if (rules.incoming.trusted_udp.includes(packet.payload.dport.toString()) === true) {
+              if (rules.incoming.trusted_igmp) {
                 thisVerdict = NF_ACCEPT
               }
             } else {
-              if (rules.incoming.untrusted_udp.includes(packet.payload.dport.toString()) === true) {
+              if (rules.incoming.untrusted_igmp) {
+                thisVerdict = NF_ACCEPT
+              }
+            }
+          }
+          break;
+        case PC_TCP:
+          if (rules.incoming.global_tcp.includes(packet.payload.dport)) {
+            thisVerdict = NF_ACCEPT
+          } else {
+            if (interface.trusted) {
+              if (rules.incoming.trusted_tcp.includes(packet.payload.dport)) {
+                thisVerdict = NF_ACCEPT
+              }
+            } else {
+              if (rules.incoming.untrusted_tcp.includes(packet.payload.dport)) {
+                thisVerdict = NF_ACCEPT
+              }
+            }
+          }
+          break;
+        case PC_UDP:
+          if (rules.incoming.global_udp.includes(packet.payload.dport)) {
+            thisVerdict = NF_ACCEPT
+          } else {
+            if (interface.trusted) {
+              if (rules.incoming.trusted_udp.includes(packet.payload.dport)) {
+                thisVerdict = NF_ACCEPT
+              }
+            } else {
+              if (rules.incoming.untrusted_udp.includes(packet.payload.dport)) {
                 thisVerdict = NF_ACCEPT
               }
             }
           }
           break;
         default:
-          if (interface.trusted) {
-          } else {
-          }
+          console.log(packet);
           break
       }
 
       // Allow us to set a META MARK for requeue and reject.
       if (thisVerdict === NF_REJECT) {
-        packetsRejected ++;
+        packetsRejected++;
         nfpacket.setVerdict(thisVerdict, 666);
       } else {
-        packetsAccepted ++;
+        packetsAccepted++;
         nfpacket.setVerdict(4, 999);
       }
       process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' - Rejected: ' + packetsRejected + '\r');
     });
-    interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), 65535, (nfpacket) => {
+    interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
       let packet = new IPv4().decode(nfpacket.payload, 0);
       let thisVerdict = NF_REJECT;
       switch (packet.protocol) {
-        case 6:
-          if (rules.outgoing.global_tcp.includes(packet.payload.dport.toString()) === true) {
+        case PC_ICMP:
+          if (rules.outgoing.global_icmp) {
             thisVerdict = NF_ACCEPT
           } else {
             if (interface.trusted) {
-              if (rules.outgoing.trusted_tcp.includes(packet.payload.dport.toString()) === true) {
+              if (rules.outgoing.trusted_icmp) {
                 thisVerdict = NF_ACCEPT
               }
             } else {
-              if (rules.outgoing.untrusted_tcp.includes(packet.payload.dport.toString()) === true) {
+              if (rules.outgoing.untrusted_icmp) {
                 thisVerdict = NF_ACCEPT
               }
             }
           }
           break;
-        case 17:
-          if (rules.outgoing.global_udp.includes(packet.payload.dport.toString()) === true) {
+        case PC_IGMP:
+          if (rules.outgoing.global_igmp) {
             thisVerdict = NF_ACCEPT
           } else {
             if (interface.trusted) {
-              if (rules.outgoing.trusted_udp.includes(packet.payload.dport.toString()) === true) {
+              if (rules.outgoing.trusted_igmp) {
                 thisVerdict = NF_ACCEPT
               }
             } else {
-              if (rules.outgoing.untrusted_udp.includes(packet.payload.dport.toString()) === true) {
+              if (rules.outgoing.untrusted_igmp) {
+                thisVerdict = NF_ACCEPT
+              }
+            }
+          }
+          break;
+        case PC_TCP:
+          if (rules.outgoing.global_tcp.includes(packet.payload.dport)) {
+            thisVerdict = NF_ACCEPT
+          } else {
+            if (interface.trusted) {
+              if (rules.outgoing.trusted_tcp.includes(packet.payload.dport)) {
+                thisVerdict = NF_ACCEPT
+              }
+            } else {
+              if (rules.outgoing.untrusted_tcp.includes(packet.payload.dport)) {
+                thisVerdict = NF_ACCEPT
+              }
+            }
+          }
+          break;
+        case PC_UDP:
+          if (rules.outgoing.global_udp.includes(packet.payload.dport)) {
+            thisVerdict = NF_ACCEPT
+          } else {
+            if (interface.trusted) {
+              if (rules.outgoing.trusted_udp.includes(packet.payload.dport)) {
+                thisVerdict = NF_ACCEPT
+              }
+            } else {
+              if (rules.outgoing.untrusted_udp.includes(packet.payload.dport)) {
                 thisVerdict = NF_ACCEPT
               }
             }
           }
           break;
         default:
-          if (interface.trusted) {
-          } else {
-          }
+          console.log(packet);
           break
       }
 
       // Allow us to set a META MARK for requeue and reject.
       if (thisVerdict === NF_REJECT) {
-        packetsRejected ++;
+        packetsRejected++;
+        // Outgoing packets set META MARK 777 - allows use of REJECT
+        //    icmp-admin-prohibited (so connections fail immediately, instead
+        //    of timing out over a period of time... which is annoying locally)
         nfpacket.setVerdict(thisVerdict, 777);
       } else {
-        packetsAccepted ++;
+        packetsAccepted++;
         nfpacket.setVerdict(4, 999);
       }
       process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' - Rejected: ' + packetsRejected + '\r');
@@ -215,4 +281,3 @@ baseRules().then(
 }
 )
 // )
-

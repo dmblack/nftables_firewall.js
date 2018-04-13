@@ -14,8 +14,23 @@ issue; you can quickly roll back to a 'safe' environment state.
 # Description
 This is an example of using NodeJS, and there in; javascript as a firewall.
 
+A more so accurate description may also be;
+nfqueued packets, from nftables, managed by javascript.
+
 This is done by using lipcap, and nfqueue (With appropriate nftables rules)
 to queue packets to user space.
+
+# Dependencies
+* linux
+* nftables
+
+To successfully build some of the child dependencies with `npm install`, as
+some build directly from sources like github - you may require things like
+(From a Debian system)
+* build-essential
+* libpcacp-dev
+* libnetfilter-queue-dev
+* libnfnetlink-dev
 
 # Getting Started
 Clone this repo within git, cd, and `npm install`.
