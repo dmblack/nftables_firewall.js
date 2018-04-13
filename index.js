@@ -17,7 +17,11 @@ const PC_UDP = 17;
 const buffer = 131070;
 
 let packetsAccepted = 0;
+let packetsAcceptedIn = 0;
+let packetsAcceptedOut = 0;
 let packetsRejected = 0;
+let packetsRejectedIn = 0;
+let packetsRejectedOut = 0;
 
 const interfaces = []
 
@@ -176,12 +180,14 @@ function bindQueueHandlers () {
       // Allow us to set a META MARK for requeue and reject.
       if (thisVerdict === NF_REJECT) {
         packetsRejected++;
+        packetsRejectedIn++;
         nfpacket.setVerdict(thisVerdict, 666);
       } else {
         packetsAccepted++;
+        packetsAcceptedIn++;
         nfpacket.setVerdict(4, 999);
       }
-      process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' - Rejected: ' + packetsRejected + '\r');
+      process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
     });
     interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
       let packet = new IPv4().decode(nfpacket.payload, 0);
@@ -255,15 +261,17 @@ function bindQueueHandlers () {
       // Allow us to set a META MARK for requeue and reject.
       if (thisVerdict === NF_REJECT) {
         packetsRejected++;
+        packetsRejectedOut++;
         // Outgoing packets set META MARK 777 - allows use of REJECT
         //    icmp-admin-prohibited (so connections fail immediately, instead
         //    of timing out over a period of time... which is annoying locally)
         nfpacket.setVerdict(thisVerdict, 777);
       } else {
         packetsAccepted++;
+        packetsAcceptedOut++;
         nfpacket.setVerdict(4, 999);
       }
-      process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' - Rejected: ' + packetsRejected + '\r');
+      process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
     });
   })
 }
