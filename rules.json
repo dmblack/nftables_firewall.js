@@ -1,52 +1,133 @@
 {
   "rules": {
     "incoming": {
-      "global_icmp": false,
-      "global_igmp": false,
-      "global_tcp": [],
-      "global_udp": [],
-      "trusted_icmp": false,
-      "trusted_tcp": [
-        22
-      ],
-      "trusted_udp": [],
-      "untrusted_icmp": false,
-      "untrusted_igmp": false,
-      "untrusted_tcp": [],
-      "untrusted_udp": []
+      "_1": "ICMP",
+      "1": {
+        "global": {
+          "enabled": false
+        },
+        "trusted": {
+          "enabled": true
+        },
+        "untrusted": {
+          "enabled": false
+        }
+      },
+      "_2": "IGMP",
+      "2": {
+        "global": {
+          "enabled": false
+        },
+        "trusted": {
+          "enabled": true
+        },
+        "untrusted": {
+          "enabled": false
+        }
+      },
+      "_6": "TCP",
+      "6": {
+        "global": {
+          "enabled": false
+        },
+        "trusted": {
+          "enabled": false
+        },
+        "untrusted": {
+          "enabled": false
+        }
+      },
+      "_17": "UDP",
+      "17": {
+        "global": {
+          "enabled": false
+        },
+        "trusted": {
+          "enabled": false
+        },
+        "untrusted": {
+          "enabled": false
+        }
+      }
     },
     "outgoing": {
-      "global_icmp": false,
-      "global_igmp": false,
-      "global_tcp": [
-        443,
-        465,
-        993
-      ],
-      "global_udp": [
-        53,
-        500,
-        1701,
-        4500
-      ],
-      "trusted_icmp": true,
-      "trusted_igmp": true,
-      "trusted_tcp": [
-        22,
-        80,
-        1900
-      ],
-      "trusted_udp": [
-        123,
-        137,
-        138,
-        1900,
-        5353
-      ],
-      "untrusted_icmp": false,
-      "untrusted_igmp": false,
-      "untrusted_tcp": [],
-      "untrusted_udp": []
+      "_1": "ICMP",
+      "1": {
+        "global": {
+          "enabled": false
+        },
+        "trusted": {
+          "enabled": true
+        },
+        "untrusted": {
+          "enabled": false
+        }
+      },
+      "_2": "IGMP",
+      "2": {
+        "global": {
+          "enabled": false
+        },
+        "trusted": {
+          "enabled": true
+        },
+        "untrusted": {
+          "enabled": false
+        }
+      },
+      "_6": "TCP",
+      "6": {
+        "global": {
+          "enabled": true,
+          "ports": {
+            "22": {},
+            "80": {},
+            "443": {},
+            "993": {},
+            "9092": {}
+          }
+        },
+        "trusted": {
+          "enabled": true,
+          "ports": {
+            "22": {},
+            "80": {},
+            "139": {},
+            "445": {},
+            "465": {},
+            "1900": {},
+            "9092": {}
+          }
+        },
+        "untrusted": {
+          "enabled": false
+        }
+      },
+      "_17": "UDP",
+      "17": {
+        "global": {
+          "enabled": true,
+          "ports": {
+            "53": {},
+            "500": {},
+            "1701": {},
+            "4500": {}
+          }
+        },
+        "trusted": {
+          "enabled": true,
+          "ports": {
+            "123": {},
+            "137": {},
+            "138": {},
+            "1900": {},
+            "5353": {}
+          }
+        },
+        "untrusted": {
+          "enabled": false
+        }
+      }
     }
   }
 }

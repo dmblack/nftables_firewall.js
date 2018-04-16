@@ -2,12 +2,24 @@ const sysClassNetInterfaces = '/sys/class/net/';
 const fs = require('fs');
 const nfq = require('nfqueue');
 const IPv4 = require('pcap/decode/ipv4');
-const rules = require('./rules.json').rules;
-const { trusted, untrusted } = require('./interfaces.json').interfaces;
+let rules = require('./rules.json').rules;
+// const rules = require('./rules.json').rules;
+const systemInterfaces = require('./interfaces.json').interfaces;
 const { exec } = require('child_process');
 
+let ruleWatch = fs.watch('./rules.json', 'utf8', () => { setTimeout(loadRules, 500) });
+
+function loadRules (err, filename) {
+  console.log('Detected ' + filename + ' change. Ingesting.');
+  fs.readFile('./rules.json', 'utf8', (err, data) => {
+    if (err) throw err;
+    let newRules = JSON.parse(data);
+    rules = newRules.rules;
+  });
+}
+
 // These are the
-const NF_REJECT = 0; 
+const NF_REJECT = 0;
 const NF_ACCEPT = 1; // Accept packet (but no longer seen / disowned by conntrack)
 const NF_REQUEUE = 4; // Requeue packet (Which we then use a mark to determine the action)
 
@@ -62,16 +74,16 @@ function baseRules () {
 // Sets base rules, with default to 'drop', but allows established and related connections.
 function insertFinalCounters () {
   return Promise.all([
-    execute('nft add rule ip filter input counter'),
-    execute('nft add rule ip filter output counter'),
+    execute('nft --handle --echo add rule ip filter input counter'),
+    execute('nft --handle --echo add rule ip filter output counter'),
   ])
 }
 
 function insertInterfaceRules (interface) {
   return Promise.all(
     [
-      execute('nft add rule ip filter input iif ' + interface.name + ' ct state new counter nftrace set 1 queue num ' + interface.number),
-      execute('nft add rule ip filter output oif ' + interface.name + ' ct state new counter nftrace set 1 queue num 100' + interface.number)
+      execute('nft --handle --echo add rule ip filter input iif ' + interface.name + ' ct state new counter nftrace set 1 queue num ' + interface.number),
+      execute('nft --handle --echo add rule ip filter output oif ' + interface.name + ' ct state new counter nftrace set 1 queue num 100' + interface.number)
     ]
   )
 }
@@ -87,8 +99,7 @@ function getInterfaces (path) {
 function setupInterfaces () {
   return new Promise(function (resolve, reject) {
     getInterfaces(sysClassNetInterfaces).forEach(interface => {
-      let isTrusted = trusted.includes(interface);
-      let newInterface = { name: interface, number: interfaces.length + 1, trusted: isTrusted };
+      let newInterface = { name: interface, number: interfaces.length + 1, zone: systemInterfaces[interface].zone };
       insertInterfaceRules(newInterface);
       interfaces.push(newInterface);
       return resolve(true);
@@ -96,74 +107,35 @@ function setupInterfaces () {
   });
 }
 
-function determineVerdict(interface, packet, direction) {
+function determineVerdict (interface, packet, direction) {
   let thisVerdict = NF_REJECT;
 
-  switch (packet.protocol) {
-    case PC_ICMP:
-      if (rules[direction].global_icmp) {
-        thisVerdict = NF_ACCEPT
-      } else {
-        if (interface.trusted) {
-          if (rules[direction].trusted_icmp) {
-            thisVerdict = NF_ACCEPT
-          }
-        } else {
-          if (rules[direction].untrusted_icmp) {
-            thisVerdict = NF_ACCEPT
-          }
+  // Check we even handle this protocol
+  if (rules[direction][packet.protocol.toString()]) {
+    // Check if the global (blanket) rule applies
+    if (rules[direction][packet.protocol.toString()].global.enabled) {
+      if (rules[direction][packet.protocol.toString()].global.ports) {
+        if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport]) {
+          thisVerdict = NF_ACCEPT;
+          return thisVerdict;
         }
-      }
-      break;
-    case PC_IGMP:
-      if (rules[direction].global_igmp) {
-        thisVerdict = NF_ACCEPT
       } else {
-        if (interface.trusted) {
-          if (rules[direction].trusted_igmp) {
-            thisVerdict = NF_ACCEPT
-          }
-        } else {
-          if (rules[direction].untrusted_igmp) {
-            thisVerdict = NF_ACCEPT
-          }
-        }
+        // The global default is enabled, yet there are no ports.. which likely
+        //    Means this is a port-less protocol.
+        thisVerdict = NF_ACCEPT;
+        return thisVerdict;
       }
-      break;
-    case PC_TCP:
-      if (rules[direction].global_tcp.includes(packet.payload.dport)) {
-        thisVerdict = NF_ACCEPT
+      // Else, as if globally accepted we don't need to traverse other zones.
+    }
+    if (rules[direction][packet.protocol.toString()][interface.zone].enabled) {
+      if (rules[direction][packet.protocol.toString()][interface.zone].ports) {
+        if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport]) {
+          thisVerdict = NF_ACCEPT;
+        }
       } else {
-        if (interface.trusted) {
-          if (rules[direction].trusted_tcp.includes(packet.payload.dport)) {
-            thisVerdict = NF_ACCEPT
-          }
-        } else {
-          if (rules[direction].untrusted_tcp.includes(packet.payload.dport)) {
-            thisVerdict = NF_ACCEPT
-          }
-        }
+        thisVerdict = NF_ACCEPT;
       }
-      break;
-    case PC_UDP:
-      if (rules[direction].global_udp.includes(packet.payload.dport)) {
-        thisVerdict = NF_ACCEPT
-      } else {
-        if (interface.trusted) {
-          if (rules[direction].trusted_udp.includes(packet.payload.dport)) {
-            thisVerdict = NF_ACCEPT
-          }
-        } else {
-          if (rules[direction].untrusted_udp.includes(packet.payload.dport)) {
-            thisVerdict = NF_ACCEPT
-          }
-        }
-      }
-      break;
-    default:
-      console.log('Unhandled Packet Type')
-      console.log(packet);
-      break
+    }
   }
 
   return thisVerdict;
@@ -171,7 +143,7 @@ function determineVerdict(interface, packet, direction) {
 
 function bindQueueHandlers () {
   interfaces.forEach(interface => {
-    interface.queueIn = nfq.createQueueHandler(interface.number, buffer, (nfpacket) => {
+    interface.queueIn = nfq.createQueueHandler(parseInt(interface.number), buffer, (nfpacket) => {
       let packet = new IPv4().decode(nfpacket.payload, 0);
       let thisVerdict = determineVerdict(interface, packet, 'incoming');
 
@@ -184,6 +156,7 @@ function bindQueueHandlers () {
         packetsAcceptedIn++;
         nfpacket.setVerdict(NF_REQUEUE, 999);
       }
+
       process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
     });
     interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
@@ -203,6 +176,7 @@ function bindQueueHandlers () {
         packetsAcceptedOut++;
         nfpacket.setVerdict(NF_REQUEUE, 999);
       }
+
       process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
     });
   })

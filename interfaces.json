@@ -1,10 +1,16 @@
 {
   "interfaces": {
-    "trusted": [
-      "lo", "ppp0"
-    ],
-    "untrusted": [
-      "enp2s0f0", "wlp3s0b1"
-    ]
+    "lo": {
+      "zone": "trusted"
+    },
+    "enp2s0f0": {
+      "zone": "untrusted"
+    },
+    "ppp0": {
+      "zone": "trusted"
+    },
+    "wlp3s0b1": {
+      "zone": "untrusted"
+    }
   }
 }
