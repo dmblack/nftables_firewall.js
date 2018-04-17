@@ -80,23 +80,47 @@
         "global": {
           "enabled": true,
           "ports": {
-            "22": {},
-            "80": {},
-            "443": {},
-            "993": {},
-            "9092": {}
+            "22": {
+              "callback": null
+            },
+            "80": {
+              "callback": null
+            },
+            "443": {
+              "callback": null
+            },
+            "993": {
+              "callback": null
+            },
+            "9092": {
+              "callback": null
+            }
           }
         },
         "trusted": {
           "enabled": true,
           "ports": {
-            "22": {},
-            "80": {},
-            "139": {},
-            "445": {},
-            "465": {},
-            "1900": {},
-            "9092": {}
+            "22": {
+              "callback": null
+            },
+            "80": {
+              "callback": null
+            },
+            "139": {
+              "callback": null
+            },
+            "445": {
+              "callback": null
+            },
+            "465": {
+              "callback": null
+            },
+            "1900": {
+              "callback": null
+            },
+            "9092": {
+              "callback": null
+            }
           }
         },
         "untrusted": {
@@ -108,20 +132,38 @@
         "global": {
           "enabled": true,
           "ports": {
-            "53": {},
-            "500": {},
-            "1701": {},
-            "4500": {}
+            "53": {
+              "callback": null
+            },
+            "500": {
+              "callback": null
+            },
+            "1701": {
+              "callback": null
+            },
+            "4500": {
+              "callback": null
+            }
           }
         },
         "trusted": {
           "enabled": true,
           "ports": {
-            "123": {},
-            "137": {},
-            "138": {},
-            "1900": {},
-            "5353": {}
+            "123": {
+              "callback": null
+            },
+            "137": {
+              "callback": null
+            },
+            "138": {
+              "callback": null
+            },
+            "1900": {
+              "callback": null
+            },
+            "5353": {
+              "callback": null
+            }
           }
         },
         "untrusted": {

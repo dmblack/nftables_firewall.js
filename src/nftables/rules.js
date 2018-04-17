@@ -14,7 +14,6 @@ function execute (exec, command) {
   })
 }
 
-
 function executeReturnHandle (exec, command) {
   return new Promise((resolve, reject) => {
     exec('nft --echo --handle ' + command, (error, stdout, stderr) => {

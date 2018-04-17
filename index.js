@@ -20,7 +20,7 @@ function loadRules (err, filename) {
   });
 }
 
-// These are the
+// These are the NFQUEUE result handler options.
 const NF_REJECT = 0;
 const NF_ACCEPT = 1; // Accept packet (but no longer seen / disowned by conntrack)
 const NF_REQUEUE = 4; // Requeue packet (Which we then use a mark to determine the action)
@@ -166,19 +166,13 @@ function bindQueueHandlers () {
   })
 }
 
-nft.flush()
-  .then((resolved) => {
-    nft.inject('./base.rules').then((resolved) => {
-      setupInterfaces().then((resolved) => {
-        bindQueueHandlers();
-
-      }, (rejected) => {
-        console.log('Rejected setup interfaces');
-      })
-    }, (rejected) => {
-      console.log('rejected inject base rules')
-    })
-  }, (rejected) => {
-    console.log('rejected flush');
-  })
-  
+nft.flush().then(
+  (resolved) => nft.inject('./base.rules'),
+  (reject) => console.log('failed to flush rules')
+).then(
+  (resolved) => setupInterfaces(),
+  (reject) => console.log('failed to inject base rules ')
+).then(
+  (resolved) => bindQueueHandlers(),
+  (reject) => console.log('Failed to setup interfaces')
+);
