@@ -33,7 +33,7 @@ function executeReturnHandle (exec, command) {
 
 const rules = (exec) => ({
   add: (rule) => {
-    return executeReturnHandle(exec, rule);
+    return executeReturnHandle(exec, 'add ' + rule);
   },
   flush: () => {
     return execute(exec, 'flush ruleset');

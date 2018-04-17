@@ -61,15 +61,15 @@ function execute (command) {
 // Sets base rules, with default to 'drop', but allows established and related connections.
 function insertFinalCounters () {
   return Promise.all([
-    execute('nft --handle --echo add rule ip filter input counter'),
-    execute('nft --handle --echo add rule ip filter output counter'),
+    nft.add('rule ip filter input counter'),
+    nft.add('rule ip filter output counter'),
   ])
 }
 
 function insertInterfaceRules (interface) {
   return Promise.all([
     nft.add('rule ip filter input iif ' + interface.name + ' ct state new counter nftrace set 1 queue num ' + interface.number),
-    nft.add('add rule ip filter output oif ' + interface.name + ' ct state new counter nftrace set 1 queue num 100' + interface.number)
+    nft.add('rule ip filter output oif ' + interface.name + ' ct state new counter nftrace set 1 queue num 100' + interface.number)
   ]);
 }
 
@@ -175,4 +175,7 @@ nft.flush().then(
 ).then(
   (resolved) => bindQueueHandlers(),
   (reject) => console.log('Failed to setup interfaces')
+).then(
+  (resolved) => insertFinalCounters(),
+  (reject) => console.log('Failed to bind queue handlers')
 );
