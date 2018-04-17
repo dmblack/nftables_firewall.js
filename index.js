@@ -7,6 +7,8 @@ let rules = require('./rules.json').rules;
 const systemInterfaces = require('./interfaces.json').interfaces;
 const { exec } = require('child_process');
 
+const nft = require('./src/nftables')({ exec: exec });
+
 let ruleWatch = fs.watch('./rules.json', 'utf8', () => { setTimeout(loadRules, 500) });
 
 function loadRules (err, filename) {
@@ -56,21 +58,6 @@ function execute (command) {
   });
 }
 
-// Flushes all rules - entirely blank.
-function flushRules () {
-  return execute('nft flush ruleset');
-}
-
-// Sets locked down (besides lo) rules. No packets accepted at all.
-function lockRules () {
-  return execute('nft -f ./locked.rules');
-}
-
-// Sets base rules, with default to 'drop', but allows established and related connections.
-function baseRules () {
-  return execute('nft -f ./base.rules');
-}
-
 // Sets base rules, with default to 'drop', but allows established and related connections.
 function insertFinalCounters () {
   return Promise.all([
@@ -80,12 +67,10 @@ function insertFinalCounters () {
 }
 
 function insertInterfaceRules (interface) {
-  return Promise.all(
-    [
-      execute('nft --handle --echo add rule ip filter input iif ' + interface.name + ' ct state new counter nftrace set 1 queue num ' + interface.number),
-      execute('nft --handle --echo add rule ip filter output oif ' + interface.name + ' ct state new counter nftrace set 1 queue num 100' + interface.number)
-    ]
-  )
+  return Promise.all([
+    nft.add('rule ip filter input iif ' + interface.name + ' ct state new counter nftrace set 1 queue num ' + interface.number),
+    nft.add('add rule ip filter output oif ' + interface.name + ' ct state new counter nftrace set 1 queue num 100' + interface.number)
+  ]);
 }
 
 function getInterfaces (path) {
@@ -97,15 +82,14 @@ function getInterfaces (path) {
 }
 
 function setupInterfaces () {
-  return new Promise(function (resolve, reject) {
-    getInterfaces(sysClassNetInterfaces).forEach(interface => {
-      let newInterface = { name: interface, number: interfaces.length + 1, zone: systemInterfaces[interface].zone };
-      insertInterfaceRules(newInterface);
-      interfaces.push(newInterface);
-      return resolve(true);
-    });
+  let interfacePromises = [];
+  getInterfaces(sysClassNetInterfaces).forEach(interface => {
+    let newInterface = { name: interface, number: interfaces.length + 1, zone: systemInterfaces[interface].zone };
+    interfacePromises.push(insertInterfaceRules(newInterface))
+    interfaces.push(newInterface);
   });
-}
+  return Promise.all(interfacePromises);
+};
 
 function determineVerdict (interface, packet, direction) {
   let thisVerdict = NF_REJECT;
@@ -182,16 +166,19 @@ function bindQueueHandlers () {
   })
 }
 
+nft.flush()
+  .then((resolved) => {
+    nft.inject('./base.rules').then((resolved) => {
+      setupInterfaces().then((resolved) => {
+        bindQueueHandlers();
 
-// flushRules().then(
-baseRules().then(
-  setupInterfaces()
-    .then(insertFinalCounters()
-      .then(bindQueueHandlers()
-      )
-    )
-).catch((err) => {
-  flushRules().then(lockRules());
-}
-)
-// )
+      }, (rejected) => {
+        console.log('Rejected setup interfaces');
+      })
+    }, (rejected) => {
+      console.log('rejected inject base rules')
+    })
+  }, (rejected) => {
+    console.log('rejected flush');
+  })
+  
