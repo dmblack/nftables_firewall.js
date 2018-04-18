@@ -51,6 +51,12 @@ is actually functioning. The overall flow is;
  - Packet is then requeued back to nftables (And accepted/dropped by meta
  filters)
 
+Output, when running, shows some basic stats of what has been achieved;
+
+`Connections - Accepted: 925 (I: 0 O: 925) - Rejected: 66 (I: 4 O: 62)`
+
+Where; I = Incomming, O = Outgoing.
+
 # Customisation
 Configuration files may be found in src/config.
 * interfaces.json - specify your trusted, and untrusted, interfaces.
