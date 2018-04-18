@@ -13,7 +13,7 @@ let ruleWatch = fs.watch('./src/config', () => { setTimeout(loadRules, 500) });
 
 function loadRules (err, filename) {
   console.log('Detected ' + filename + ' change. Ingesting.');
-  fs.readFile('./config/rules.json', 'utf8', (err, data) => {
+  fs.readFile('./src/config/rules.json', 'utf8', (err, data) => {
     if (err) throw err;
     let newRules = JSON.parse(data);
     rules = newRules.rules;
@@ -162,7 +162,7 @@ function bindQueueHandlers () {
 }
 
 nft.flush().then(
-  (resolved) => nft.inject('./src/config/base.rules'),
+  (resolved) => nft.inject('./src/config/rules-base.nft'),
   (reject) => console.log('failed to flush rules')
 ).then(
   (resolved) => setupInterfaces(),
