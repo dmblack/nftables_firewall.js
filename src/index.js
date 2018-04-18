@@ -68,8 +68,17 @@ function getInterfaces (path) {
     : [];
 }
 
+const promiseSerial = funcs =>
+  funcs.reduce((promise, func) =>
+    promise.then(result =>
+      func().then(Array.prototype.concat.bind(result))),
+      Promise.resolve([]))
+
 function setupInterfaces () {
   let interfacePromises = [];
+  let outInterfaces = getInterfaces(sysClassNetInterfaces);
+
+  
   getInterfaces(sysClassNetInterfaces).forEach(interface => {
     let zone = 'untrusted'
     if (systemInterfaces[interface] && systemInterfaces[interface].zone)
@@ -77,10 +86,11 @@ function setupInterfaces () {
       zone = systemInterfaces[interface].zone || 'untrusted';
     }
     let newInterface = { name: interface, number: interfaces.length + 1, zone };
-    interfacePromises.push(insertInterfaceRules(newInterface))
+    interfacePromises.push(() => insertInterfaceRules(newInterface))
     interfaces.push(newInterface);
   });
-  return Promise.all(interfacePromises);
+
+  return promiseSerial(interfacePromises)
 };
 
 function determineVerdict (interface, packet, direction) {
