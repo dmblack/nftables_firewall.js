@@ -2,7 +2,7 @@
   "name": "nftables_firewall.js",
   "version": "0.0.1",
   "description": "Is a test / proof of concept firewall using NodeJS and nftables/nfqueue.",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

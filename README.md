@@ -39,7 +39,7 @@ Once running, you must initialize the app with sudo (Due to use of libpcap).
 
 I personally use;
 
-```sudo `which node` index.js```
+```sudo `which node` src/index.js```
 
 # Usage
 You can customize your rules within the *.json configuration files.
@@ -52,8 +52,10 @@ is actually functioning. The overall flow is;
  filters)
 
 # Customisation
+Configuration files may be found in src/config.
 * interfaces.json - specify your trusted, and untrusted, interfaces.
 * rules.json - Specify what ports, in which 'trust' zones you want to allow
+* * Note: Changes to this file are 'hot loaded'. Care should be taken.
 * base.rules - Is the 'initial' template of rules deployed. (Creates the 
 appropriate table, chains)
 * locked.rules - Is basically what the script 'should' fall back to if there

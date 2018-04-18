@@ -2,18 +2,18 @@ const sysClassNetInterfaces = '/sys/class/net/';
 const fs = require('fs');
 const nfq = require('nfqueue');
 const IPv4 = require('pcap/decode/ipv4');
-let rules = require('./rules.json').rules;
+let rules = require('./config/rules.json').rules;
 // const rules = require('./rules.json').rules;
-const systemInterfaces = require('./interfaces.json').interfaces;
+const systemInterfaces = require('./config/interfaces.json').interfaces;
 const { exec } = require('child_process');
 
-const nft = require('./src/nftables')({ exec: exec });
+const nft = require('./nftables')({ exec: exec });
 
-let ruleWatch = fs.watch('./rules.json', 'utf8', () => { setTimeout(loadRules, 500) });
+let ruleWatch = fs.watch('./src/config', () => { setTimeout(loadRules, 500) });
 
 function loadRules (err, filename) {
   console.log('Detected ' + filename + ' change. Ingesting.');
-  fs.readFile('./rules.json', 'utf8', (err, data) => {
+  fs.readFile('./config/rules.json', 'utf8', (err, data) => {
     if (err) throw err;
     let newRules = JSON.parse(data);
     rules = newRules.rules;
@@ -45,18 +45,6 @@ let packetsRejectedOut = 0;
 
 // An array to store our interfaces.
 let interfaces = []
-
-function execute (command) {
-  return new Promise(function (resolve, reject) {
-    exec(command, (err, stdout, stderr) => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve(stdout);
-      }
-    });
-  });
-}
 
 // Sets base rules, with default to 'drop', but allows established and related connections.
 function insertFinalCounters () {
@@ -101,6 +89,9 @@ function determineVerdict (interface, packet, direction) {
       if (rules[direction][packet.protocol.toString()].global.ports) {
         if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport]) {
           thisVerdict = NF_ACCEPT;
+          if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].callback) {
+            rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].callback();
+          }
           return thisVerdict;
         }
       } else {
@@ -115,6 +106,9 @@ function determineVerdict (interface, packet, direction) {
       if (rules[direction][packet.protocol.toString()][interface.zone].ports) {
         if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport]) {
           thisVerdict = NF_ACCEPT;
+          if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].callback) {
+            rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].callback();
+          }
         }
       } else {
         thisVerdict = NF_ACCEPT;
@@ -123,6 +117,10 @@ function determineVerdict (interface, packet, direction) {
   }
 
   return thisVerdict;
+}
+
+function updateOutput () {
+  process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
 }
 
 function bindQueueHandlers () {
@@ -140,9 +138,8 @@ function bindQueueHandlers () {
         packetsAcceptedIn++;
         nfpacket.setVerdict(NF_REQUEUE, 999);
       }
-
-      process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
     });
+
     interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
       let packet = new IPv4().decode(nfpacket.payload, 0);
       let thisVerdict = determineVerdict(interface, packet, 'outgoing');
@@ -160,14 +157,12 @@ function bindQueueHandlers () {
         packetsAcceptedOut++;
         nfpacket.setVerdict(NF_REQUEUE, 999);
       }
-
-      process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
     });
   })
 }
 
 nft.flush().then(
-  (resolved) => nft.inject('./base.rules'),
+  (resolved) => nft.inject('./src/config/base.rules'),
   (reject) => console.log('failed to flush rules')
 ).then(
   (resolved) => setupInterfaces(),
@@ -178,4 +173,8 @@ nft.flush().then(
 ).then(
   (resolved) => insertFinalCounters(),
   (reject) => console.log('Failed to bind queue handlers')
+).catch(
+  (err) => console.log('Failed to insert final counters')
 );
+
+const outputInterval = setInterval(updateOutput, 2500);
