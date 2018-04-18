@@ -8,6 +8,8 @@ const { exec } = require('child_process');
 
 const nft = require('./nftables')({ exec: exec });
 
+process.stdout.write('\x1Bc');
+
 let ruleWatch = fs.watch('./src/config', () => { setTimeout(loadRules, 500) });
 
 function loadRules (err, filename) {
@@ -72,17 +74,14 @@ const promiseSerial = funcs =>
   funcs.reduce((promise, func) =>
     promise.then(result =>
       func().then(Array.prototype.concat.bind(result))),
-      Promise.resolve([]))
+    Promise.resolve([]))
 
 function setupInterfaces () {
   let interfacePromises = [];
-  let outInterfaces = getInterfaces(sysClassNetInterfaces);
 
-  
   getInterfaces(sysClassNetInterfaces).forEach(interface => {
     let zone = 'untrusted'
-    if (systemInterfaces[interface] && systemInterfaces[interface].zone)
-    {
+    if (systemInterfaces[interface] && systemInterfaces[interface].zone) {
       zone = systemInterfaces[interface].zone || 'untrusted';
     }
     let newInterface = { name: interface, number: interfaces.length + 1, zone };
@@ -111,8 +110,8 @@ function determineVerdict (interface, packet, direction) {
           }
           return thisVerdict;
         }
-      // The global default is enabled, yet there are no ports.. which likely
-      //    Means this is a port-less protocol.
+        // The global default is enabled, yet there are no ports.. which likely
+        //    Means this is a port-less protocol.
       } else {
         thisVerdict = NF_ACCEPT;
         return thisVerdict;
@@ -131,9 +130,9 @@ function determineVerdict (interface, packet, direction) {
             rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].callback();
           }
         }
-      // The global default is enabled, yet there are no ports.. which likely
-      //    Means this is a port-less protocol.
-    } else {
+        // The global default is enabled, yet there are no ports.. which likely
+        //    Means this is a port-less protocol.
+      } else {
         thisVerdict = NF_ACCEPT;
       }
     }
@@ -143,6 +142,7 @@ function determineVerdict (interface, packet, direction) {
 }
 
 function updateOutput () {
+  process.stdout.write('\x1Bc');
   process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
 }
 
@@ -184,17 +184,30 @@ function bindQueueHandlers () {
   })
 }
 
+console.log('Flushing rules...');
 nft.flush().then(
-  (resolved) => nft.inject('./src/config/rules-base.nft'),
+  (resolved) => {
+    console.log('Injecting NFTables base ruleset...');
+    nft.inject('./src/config/rules-base.nft')
+  },
   (reject) => console.log('Failed to flush rules: ' + reject)
 ).then(
-  (resolved) => setupInterfaces(),
+  (resolved) => {
+    console.log('Configuring interfaces...');
+    setupInterfaces();
+  },
   (reject) => console.log('Failed to inject base rules: ' + reject)
 ).then(
-  (resolved) => bindQueueHandlers(),
+  (resolved) => {
+    console.log('Binding NFQueue handlers...');
+    bindQueueHandlers();
+  },
   (reject) => console.log('Failed to setup interfaces: ' + reject)
 ).then(
-  (resolved) => insertFinalCounters(),
+  (resolved) => {
+    console.log('Inserting final (counter) rules...');
+    insertFinalCounters();
+  },
   (reject) => console.log('Failed to bind queue handlers: ' + reject)
 ).catch(
   (err) => console.log('Failed to insert final counters: ' + err)
