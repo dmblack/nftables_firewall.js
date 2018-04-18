@@ -3,7 +3,6 @@ const fs = require('fs');
 const nfq = require('nfqueue');
 const IPv4 = require('pcap/decode/ipv4');
 let rules = require('./config/rules.json').rules;
-// const rules = require('./rules.json').rules;
 const systemInterfaces = require('./config/interfaces.json').interfaces;
 const { exec } = require('child_process');
 
@@ -72,7 +71,12 @@ function getInterfaces (path) {
 function setupInterfaces () {
   let interfacePromises = [];
   getInterfaces(sysClassNetInterfaces).forEach(interface => {
-    let newInterface = { name: interface, number: interfaces.length + 1, zone: systemInterfaces[interface].zone };
+    let zone = 'untrusted'
+    if (systemInterfaces[interface] && systemInterfaces[interface].zone)
+    {
+      zone = systemInterfaces[interface].zone || 'untrusted';
+    }
+    let newInterface = { name: interface, number: interfaces.length + 1, zone };
     interfacePromises.push(insertInterfaceRules(newInterface))
     interfaces.push(newInterface);
   });
@@ -85,32 +89,41 @@ function determineVerdict (interface, packet, direction) {
   // Check we even handle this protocol
   if (rules[direction][packet.protocol.toString()]) {
     // Check if the global (blanket) rule applies
-    if (rules[direction][packet.protocol.toString()].global.enabled) {
+    if (rules[direction][packet.protocol.toString()].global.allowed) {
+      // Check if the global setting has any specific ports
       if (rules[direction][packet.protocol.toString()].global.ports) {
+        // Check, if there are ports, if the port is allowed.
         if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport]) {
           thisVerdict = NF_ACCEPT;
+          // Finally - if the port is allowed, check if there's a callback to trigger.
           if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].callback) {
             rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].callback();
           }
           return thisVerdict;
         }
+      // The global default is enabled, yet there are no ports.. which likely
+      //    Means this is a port-less protocol.
       } else {
-        // The global default is enabled, yet there are no ports.. which likely
-        //    Means this is a port-less protocol.
         thisVerdict = NF_ACCEPT;
         return thisVerdict;
       }
       // Else, as if globally accepted we don't need to traverse other zones.
     }
-    if (rules[direction][packet.protocol.toString()][interface.zone].enabled) {
+    // Check if the protocol is zone allowed.
+    if (rules[direction][packet.protocol.toString()][interface.zone].allowed) {
+      // Check if the protocol's zone setting has any specific ports
       if (rules[direction][packet.protocol.toString()][interface.zone].ports) {
+        // Check, if there are ports, if the port is allowed.
         if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport]) {
           thisVerdict = NF_ACCEPT;
+          // Finally - if the port is allowed, check if there's a callback to trigger.
           if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].callback) {
             rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].callback();
           }
         }
-      } else {
+      // The global default is enabled, yet there are no ports.. which likely
+      //    Means this is a port-less protocol.
+    } else {
         thisVerdict = NF_ACCEPT;
       }
     }
@@ -163,18 +176,18 @@ function bindQueueHandlers () {
 
 nft.flush().then(
   (resolved) => nft.inject('./src/config/rules-base.nft'),
-  (reject) => console.log('failed to flush rules')
+  (reject) => console.log('Failed to flush rules: ' + reject)
 ).then(
   (resolved) => setupInterfaces(),
-  (reject) => console.log('failed to inject base rules ')
+  (reject) => console.log('Failed to inject base rules: ' + reject)
 ).then(
   (resolved) => bindQueueHandlers(),
-  (reject) => console.log('Failed to setup interfaces')
+  (reject) => console.log('Failed to setup interfaces: ' + reject)
 ).then(
   (resolved) => insertFinalCounters(),
-  (reject) => console.log('Failed to bind queue handlers')
+  (reject) => console.log('Failed to bind queue handlers: ' + reject)
 ).catch(
-  (err) => console.log('Failed to insert final counters')
+  (err) => console.log('Failed to insert final counters: ' + err)
 );
 
 const outputInterval = setInterval(updateOutput, 2500);

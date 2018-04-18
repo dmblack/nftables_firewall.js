@@ -4,49 +4,49 @@
       "_1": "ICMP",
       "1": {
         "global": {
-          "enabled": false
+          "allowed": false
         },
         "trusted": {
-          "enabled": true
+          "allowed": true
         },
         "untrusted": {
-          "enabled": false
+          "allowed": false
         }
       },
       "_2": "IGMP",
       "2": {
         "global": {
-          "enabled": false
+          "allowed": false
         },
         "trusted": {
-          "enabled": true
+          "allowed": true
         },
         "untrusted": {
-          "enabled": false
+          "allowed": false
         }
       },
       "_6": "TCP",
       "6": {
         "global": {
-          "enabled": false
+          "allowed": false
         },
         "trusted": {
-          "enabled": false
+          "allowed": false
         },
         "untrusted": {
-          "enabled": false
+          "allowed": false
         }
       },
       "_17": "UDP",
       "17": {
         "global": {
-          "enabled": false
+          "allowed": false
         },
         "trusted": {
-          "enabled": false
+          "allowed": false
         },
         "untrusted": {
-          "enabled": false
+          "allowed": false
         }
       }
     },
@@ -54,31 +54,31 @@
       "_1": "ICMP",
       "1": {
         "global": {
-          "enabled": false
+          "allowed": false
         },
         "trusted": {
-          "enabled": true
+          "allowed": true
         },
         "untrusted": {
-          "enabled": false
+          "allowed": false
         }
       },
       "_2": "IGMP",
       "2": {
         "global": {
-          "enabled": false
+          "allowed": false
         },
         "trusted": {
-          "enabled": true
+          "allowed": true
         },
         "untrusted": {
-          "enabled": false
+          "allowed": false
         }
       },
       "_6": "TCP",
       "6": {
         "global": {
-          "enabled": true,
+          "allowed": true,
           "ports": {
             "22": {
               "callback": null
@@ -98,7 +98,7 @@
           }
         },
         "trusted": {
-          "enabled": true,
+          "allowed": true,
           "ports": {
             "22": {
               "callback": null
@@ -124,13 +124,13 @@
           }
         },
         "untrusted": {
-          "enabled": false
+          "allowed": false
         }
       },
       "_17": "UDP",
       "17": {
         "global": {
-          "enabled": true,
+          "allowed": true,
           "ports": {
             "53": {
               "callback": null
@@ -147,7 +147,7 @@
           }
         },
         "trusted": {
-          "enabled": true,
+          "allowed": true,
           "ports": {
             "123": {
               "callback": null
@@ -167,7 +167,7 @@
           }
         },
         "untrusted": {
-          "enabled": false
+          "allowed": false
         }
       }
     }
