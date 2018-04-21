@@ -2,24 +2,11 @@ const sysClassNetInterfaces = '/sys/class/net/';
 const fs = require('fs');
 const nfq = require('nfqueue');
 const IPv4 = require('pcap/decode/ipv4');
-let rules = require('./config/rules.json').rules;
-const systemInterfaces = require('./config/interfaces.json').interfaces;
+const pcap = require('pcap');
 const { exec } = require('child_process');
+const nfpacket = require('./nfpacket')({ nfq: nfq, pcap: pcap })
 
 const nft = require('./nftables')({ exec: exec });
-
-process.stdout.write('\x1Bc');
-
-let ruleWatch = fs.watch('./src/config', () => { setTimeout(loadRules, 500) });
-
-function loadRules (err, filename) {
-  console.log('Detected ' + filename + ' change. Ingesting.');
-  fs.readFile('./src/config/rules.json', 'utf8', (err, data) => {
-    if (err) throw err;
-    let newRules = JSON.parse(data);
-    rules = newRules.rules;
-  });
-}
 
 // These are the NFQUEUE result handler options.
 const NF_REJECT = 0;
@@ -35,6 +22,38 @@ const PC_UDP = 17;
 
 // The buffer size we will use binding to nfqueues.
 const buffer = 131070;
+
+process.stdout.write('\x1Bc');
+
+let rules = require('./config/rules.json').rules;
+let systemInterfaces = require('./config/interfaces.json').interfaces;
+
+let configWatch = fs.watch('./src/config', checkConfig);
+
+function checkConfig (err, filename) {
+  setTimeout(() => {
+    console.log(filename);
+    console.log(err)
+    switch (filename) {
+      case 'rules.json':
+        console.log('Rules Configuration Changed - Reloding..')
+        fs.readFile('./src/config/rules.json', 'utf8', (err, data) => {
+          if (err) throw err;
+          let newRules = JSON.parse(data);
+          rules = newRules.rules;
+        });
+        break;
+      case 'interfaces.json':
+        console.log('Interfaces Configuration Changed - Reloding..')
+        fs.readFile('./src/config/interfaces.json', 'utf8', (err, data) => {
+          if (err) throw err;
+          let newInterfaces = JSON.parse(data);
+          systemInterfaces = newInterfaces.interfaces;
+        });
+        break;
+    }
+  }, 500)
+}
 
 // Some counters for connection analysis (Used for stdio)
 let packetsAccepted = 0;
@@ -70,11 +89,20 @@ function getInterfaces (path) {
     : [];
 }
 
-const promiseSerial = funcs =>
-  funcs.reduce((promise, func) =>
-    promise.then(result =>
-      func().then(Array.prototype.concat.bind(result))),
-    Promise.resolve([]))
+/**
+ * Runs promises from promise array in chained manner
+ *
+ * @param {array} arr - promise arr
+ * @return {Object} promise object
+ */
+function runPromiseInSequense(arr) {
+  return arr.reduce((promiseChain, currentPromise) => {
+    return promiseChain.then((chainedResult) => {
+      return currentPromise(chainedResult)
+        .then((res) => res)
+    })
+  }, Promise.resolve());
+}
 
 function setupInterfaces () {
   let interfacePromises = [];
@@ -89,7 +117,7 @@ function setupInterfaces () {
     interfaces.push(newInterface);
   });
 
-  return promiseSerial(interfacePromises)
+  return runPromiseInSequense(interfacePromises)
 };
 
 function determineVerdict (interface, packet, direction) {
@@ -99,14 +127,18 @@ function determineVerdict (interface, packet, direction) {
   if (rules[direction][packet.protocol.toString()]) {
     // Check if the global (blanket) rule applies
     if (rules[direction][packet.protocol.toString()].global.allowed) {
+      // Trigger the callback, if it exists..
+      if (rules[direction][packet.protocol.toString()].global.acceptCallback) {
+        eval(rules[direction][packet.protocol.toString()].global.acceptCallback)(packet);
+      }
       // Check if the global setting has any specific ports
       if (rules[direction][packet.protocol.toString()].global.ports) {
         // Check, if there are ports, if the port is allowed.
         if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport]) {
           thisVerdict = NF_ACCEPT;
           // Finally - if the port is allowed, check if there's a callback to trigger.
-          if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].callback) {
-            rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].callback();
+          if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].acceptCallback) {
+            eval(rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].acceptCallback)(packet);
           }
           return thisVerdict;
         }
@@ -120,14 +152,18 @@ function determineVerdict (interface, packet, direction) {
     }
     // Check if the protocol is zone allowed.
     if (rules[direction][packet.protocol.toString()][interface.zone].allowed) {
+      // Trigger the protocol zone callback, if it exists.
+      if (rules[direction][packet.protocol.toString()][interface.zone].acceptCallback) {
+        eval(rules[direction][packet.protocol.toString()][interface.zone].acceptCallback)(packet);
+      }
       // Check if the protocol's zone setting has any specific ports
       if (rules[direction][packet.protocol.toString()][interface.zone].ports) {
         // Check, if there are ports, if the port is allowed.
         if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport]) {
           thisVerdict = NF_ACCEPT;
           // Finally - if the port is allowed, check if there's a callback to trigger.
-          if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].callback) {
-            rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].callback();
+          if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].acceptCallback) {
+            eval(rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].acceptCallback)(packet);
           }
         }
         // The global default is enabled, yet there are no ports.. which likely
@@ -206,7 +242,7 @@ nft.flush().then(
 ).then(
   (resolved) => {
     console.log('Inserting final (counter) rules...');
-    insertFinalCounters();
+    setTimeout(insertFinalCounters, 2000);
   },
   (reject) => console.log('Failed to bind queue handlers: ' + reject)
 ).catch(
