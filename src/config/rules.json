@@ -153,6 +153,10 @@
               "acceptAction": null,
               "rejectAction": null
             },
+            "1880": {
+              "acceptAction": null,
+              "rejectAction": null              
+            },
             "1900": {
               "acceptAction": null,
               "rejectAction": null
@@ -177,7 +181,7 @@
           "rejectAction": null,
           "ports": {
             "53": {
-              "acceptAction": "((packet) => { console.log(packet) })",
+              "acceptAction": null,
               "rejectAction": null
             },
             "500": {

@@ -4,13 +4,13 @@ const nfq = require('nfqueue');
 const IPv4 = require('pcap/decode/ipv4');
 const pcap = require('pcap');
 const { exec } = require('child_process');
-const nfpacket = require('./nfpacket')({ nfq: nfq, pcap: pcap })
-
 const nft = require('./nftables')({ exec: exec });
+const nfpacket = require('./nfpacket')({ nfq: nfq, pcap: pcap })
+const actions = require('./actions')({ fs: fs })
 
 // These are the NFQUEUE result handler options.
-const NF_REJECT = 0;
-const NF_ACCEPT = 1; // Accept packet (but no longer seen / disowned by conntrack)
+const NF_DROP = 0;  // Drop the packet (There is no response or closure)
+const NF_ACCEPT = 1;  // Accept packet (but no longer seen / disowned by conntrack)
 const NF_REQUEUE = 4; // Requeue packet (Which we then use a mark to determine the action)
 
 // Protocol Numbers can be found here, however; libpcap has limited support..
@@ -32,8 +32,6 @@ let configWatch = fs.watch('./src/config', checkConfig);
 
 function checkConfig (err, filename) {
   setTimeout(() => {
-    console.log(filename);
-    console.log(err)
     switch (filename) {
       case 'rules.json':
         console.log('Rules Configuration Changed - Reloding..')
@@ -95,7 +93,7 @@ function getInterfaces (path) {
  * @param {array} arr - promise arr
  * @return {Object} promise object
  */
-function runPromiseInSequense(arr) {
+function runPromiseArrayInSequence(arr) {
   return arr.reduce((promiseChain, currentPromise) => {
     return promiseChain.then((chainedResult) => {
       return currentPromise(chainedResult)
@@ -117,28 +115,38 @@ function setupInterfaces () {
     interfaces.push(newInterface);
   });
 
-  return runPromiseInSequense(interfacePromises)
+  return runPromiseArrayInSequence(interfacePromises)
 };
 
+function handleActions(action, packet) {
+  switch (action) {
+    case 'log':
+      actions.log(JSON.stringify(packet));
+      break;
+    default:
+      break;
+  }
+}
+
 function determineVerdict (interface, packet, direction) {
-  let thisVerdict = NF_REJECT;
+  let thisVerdict = NF_DROP;
 
   // Check we even handle this protocol
-  if (rules[direction][packet.protocol.toString()]) {
+  if (rules[direction][packet.payloadDecoded.protocol.toString()]) {
     // Check if the global (blanket) rule applies
-    if (rules[direction][packet.protocol.toString()].global.allowed) {
+    if (rules[direction][packet.payloadDecoded.protocol.toString()].global.allowed) {
       // Trigger the callback, if it exists..
-      if (rules[direction][packet.protocol.toString()].global.acceptCallback) {
-        eval(rules[direction][packet.protocol.toString()].global.acceptCallback)(packet);
+      if (rules[direction][packet.payloadDecoded.protocol.toString()].global.acceptAction) {
+        handleActions(rules[direction][packet.payloadDecoded.protocol.toString()].global.acceptAction, packet);
       }
       // Check if the global setting has any specific ports
-      if (rules[direction][packet.protocol.toString()].global.ports) {
+      if (rules[direction][packet.payloadDecoded.protocol.toString()].global.ports) {
         // Check, if there are ports, if the port is allowed.
-        if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport]) {
+        if (rules[direction][packet.payloadDecoded.protocol.toString()].global.ports[packet.payloadDecoded.payload.dport]) {
           thisVerdict = NF_ACCEPT;
           // Finally - if the port is allowed, check if there's a callback to trigger.
-          if (rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].acceptCallback) {
-            eval(rules[direction][packet.protocol.toString()].global.ports[packet.payload.dport].acceptCallback)(packet);
+          if (rules[direction][packet.payloadDecoded.protocol.toString()].global.ports[packet.payloadDecoded.payload.dport].acceptAction) {
+            handleActions(rules[direction][packet.payloadDecoded.protocol.toString()].global.ports[packet.payloadDecoded.payload.dport].acceptAction, packet);
           }
           return thisVerdict;
         }
@@ -151,19 +159,19 @@ function determineVerdict (interface, packet, direction) {
       // Else, as if globally accepted we don't need to traverse other zones.
     }
     // Check if the protocol is zone allowed.
-    if (rules[direction][packet.protocol.toString()][interface.zone].allowed) {
+    if (rules[direction][packet.payloadDecoded.protocol.toString()][interface.zone].allowed) {
       // Trigger the protocol zone callback, if it exists.
-      if (rules[direction][packet.protocol.toString()][interface.zone].acceptCallback) {
-        eval(rules[direction][packet.protocol.toString()][interface.zone].acceptCallback)(packet);
+      if (rules[direction][packet.payloadDecoded.protocol.toString()][interface.zone].acceptAction) {
+        handleActions(rules[direction][packet.payloadDecoded.protocol.toString()][interface.zone].acceptAction, packet);
       }
       // Check if the protocol's zone setting has any specific ports
-      if (rules[direction][packet.protocol.toString()][interface.zone].ports) {
+      if (rules[direction][packet.payloadDecoded.protocol.toString()][interface.zone].ports) {
         // Check, if there are ports, if the port is allowed.
-        if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport]) {
+        if (rules[direction][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.dport]) {
           thisVerdict = NF_ACCEPT;
           // Finally - if the port is allowed, check if there's a callback to trigger.
-          if (rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].acceptCallback) {
-            eval(rules[direction][packet.protocol.toString()][interface.zone].ports[packet.payload.dport].acceptCallback)(packet);
+          if (rules[direction][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.dport].acceptAction) {
+            handleActions(rules[direction][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.dport].acceptAction, packet);
           }
         }
         // The global default is enabled, yet there are no ports.. which likely
@@ -185,10 +193,13 @@ function updateOutput () {
 function bindQueueHandlers () {
   interfaces.forEach(interface => {
     interface.queueIn = nfq.createQueueHandler(parseInt(interface.number), buffer, (nfpacket) => {
-      let packet = new IPv4().decode(nfpacket.payload, 0);
-      let thisVerdict = determineVerdict(interface, packet, 'incoming');
+      let decoded = new IPv4().decode(nfpacket.payload, 0);
+      let stringified = nfpacket.payload.toString();
+      let clonedPacket = Object.assign({}, nfpacket, { payloadDecoded: decoded, payloadStringified: stringified });
 
-      if (thisVerdict === NF_REJECT) {
+      let thisVerdict = determineVerdict(interface, clonedPacket, 'incoming');
+
+      if (thisVerdict === NF_DROP) {
         packetsRejected++;
         packetsRejectedIn++;
         nfpacket.setVerdict(NF_REQUEUE, 666);
@@ -200,11 +211,14 @@ function bindQueueHandlers () {
     });
 
     interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
-      let packet = new IPv4().decode(nfpacket.payload, 0);
-      let thisVerdict = determineVerdict(interface, packet, 'outgoing');
+      let decoded = new IPv4().decode(nfpacket.payload, 0);
+      let stringified = nfpacket.payload.toString();
+      let clonedPacket = Object.assign({}, nfpacket, { payloadDecoded: decoded, payloadStringified: stringified });
+      
+      let thisVerdict = determineVerdict(interface, clonedPacket, 'outgoing');
 
       // Allow us to set a META MARK for requeue and reject.
-      if (thisVerdict === NF_REJECT) {
+      if (thisVerdict === NF_DROP) {
         packetsRejected++;
         packetsRejectedOut++;
         // Outgoing packets set META MARK 777 - allows use of REJECT
@@ -249,4 +263,4 @@ nft.flush().then(
   (err) => console.log('Failed to insert final counters: ' + err)
 );
 
-const outputInterval = setInterval(updateOutput, 2500);
+const outputInterval = setInterval(updateOutput, 5000);
