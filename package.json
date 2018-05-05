@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/dmblack/nftables_firewall.js#readme",
   "dependencies": {
-    "nfqueue": "^0.3.1",
-    "pcap": "https://github.com/mranney/node_pcap.git"
+    "nfqueue": "https://github.com/dmblack/node-nfqueue.git",
+    "pcap": "https://github.com/dmblack/node_pcap.git"
   }
 }
