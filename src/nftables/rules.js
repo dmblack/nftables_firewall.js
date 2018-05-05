@@ -33,7 +33,7 @@ function executeReturnHandle (exec, command) {
 
 const rules = (exec) => ({
   add: (rule) => {
-    return exeute(exec, 'add ' + rule);
+    return execute(exec, 'add ' + rule);
   },
   flush: () => {
     return execute(exec, 'flush ruleset');
@@ -45,7 +45,7 @@ const rules = (exec) => ({
     return execute(exec, 'list ruleset');
   },
   removeByTableSetChainHandle: (table, set, chain, handle) => {
-    return exeute(exec, 'delete rule table ' + table + ' ' + set + ' ' + chain + ' ' + handle)
+    return execute(exec, 'delete rule table ' + table + ' ' + set + ' ' + chain + ' ' + handle)
   }
 })
 
