@@ -10,7 +10,7 @@
       "zone": "trusted"
     },
     "wlp3s0b1": {
-      "zone": "untrusted"
+      "zone": "trusted"
     }
   }
 }

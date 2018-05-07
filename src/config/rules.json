@@ -1,4 +1,5 @@
 {
+  "detail": "This file should be copied into './config/' and setup as necessary.",
   "rules": {
     "incoming": {
       "_1": "ICMP",
@@ -158,6 +159,22 @@
               "rejectAction": null              
             },
             "1900": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "2083": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "2087": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "2096": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "3142": {
               "acceptAction": null,
               "rejectAction": null
             },

@@ -25,10 +25,10 @@ const buffer = 131070;
 
 process.stdout.write('\x1Bc');
 
-let rules = require('./config/rules.json').rules;
-let systemInterfaces = require('./config/interfaces.json').interfaces;
+let rules = require('./../config/rules.json').rules;
+let systemInterfaces = require('./../config/interfaces.json').interfaces;
 
-let configWatch = fs.watch('./src/config', checkConfig);
+let configWatch = fs.watch('./config', checkConfig);
 
 function checkConfig (err, filename) {
   setTimeout(() => {
