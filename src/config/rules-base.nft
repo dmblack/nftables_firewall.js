@@ -5,9 +5,9 @@ table ip filter {
     type filter hook input priority 0; policy drop;
     counter;
     meta mark 666 counter drop comment "NodeJS Rejected";
+    meta mark 9999 counter queue num 9999 comment "NodeJS Accepted - LOGGING";
     meta mark 999 counter accept comment "NodeJS Accepted";
     ct state { invalid, untracked } counter drop;
-    ct state { established, related } counter accept;
     counter;
   }
   
@@ -16,9 +16,9 @@ table ip filter {
     counter;
     meta mark 666 counter drop comment "NodeJS Rejected";
     meta mark 777 counter reject with icmp type admin-prohibited;
+    meta mark 9999 counter queue num 9999 comment "NodeJS Accepted - LOGGING";
     meta mark 999 counter accept comment "NodeJS Accepted";
     ct state { invalid, untracked } counter drop;
-    ct state { established, related } counter accept;
     counter;
   }
 }

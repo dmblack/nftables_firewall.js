@@ -35,7 +35,7 @@ function checkConfig (err, filename) {
     switch (filename) {
       case 'rules.json':
         console.log('Rules Configuration Changed - Reloding..')
-        fs.readFile('./src/config/rules.json', 'utf8', (err, data) => {
+        fs.readFile('./config/rules.json', 'utf8', (err, data) => {
           if (err) throw err;
           let newRules = JSON.parse(data);
           rules = newRules.rules;
@@ -43,7 +43,7 @@ function checkConfig (err, filename) {
         break;
       case 'interfaces.json':
         console.log('Interfaces Configuration Changed - Reloding..')
-        fs.readFile('./src/config/interfaces.json', 'utf8', (err, data) => {
+        fs.readFile('./config/interfaces.json', 'utf8', (err, data) => {
           if (err) throw err;
           let newInterfaces = JSON.parse(data);
           systemInterfaces = newInterfaces.interfaces;
@@ -62,20 +62,24 @@ let packetsRejectedIn = 0;
 let packetsRejectedOut = 0;
 
 // An array to store our interfaces.
-let interfaces = []
+let interfaces = [];
 
 // Sets base rules, with default to 'drop', but allows established and related connections.
 function insertFinalCounters () {
   return Promise.all([
+    nft.add('rule ip filter input ct state { established, related } counter accept'),
     nft.add('rule ip filter input counter'),
+    nft.add('rule ip filter output ct state { established, related } counter accept'),
     nft.add('rule ip filter output counter'),
   ])
 }
 
 function insertInterfaceRules (interface) {
   return Promise.all([
-    nft.add('rule ip filter input iif ' + interface.name + ' ct state new counter nftrace set 1 queue num ' + interface.number),
-    nft.add('rule ip filter output oif ' + interface.name + ' ct state new counter nftrace set 1 queue num 100' + interface.number)
+    nft.add('rule ip filter input iif ' + interface.name + ' ct state new counter nftrace set 1 meta mark set 1234 queue num ' + interface.number),
+    nft.add('rule ip filter input iif ' + interface.name + ' meta mark 9999 counter queue num 200' + interface.number),
+    nft.add('rule ip filter output oif ' + interface.name + ' ct state new counter nftrace set 1 meta mark set 1234 queue num 100' + interface.number),
+    nft.add('rule ip filter output oif ' + interface.name + ' meta mark 9999 counter queue num 210' + interface.number)
   ]);
 }
 
@@ -210,6 +214,16 @@ function bindQueueHandlers () {
       }
     });
 
+    interface.queueInLog = nfq.createQueueHandler(parseInt('200' + interface.number), buffer, (nfpacket) => {
+      let decoded = new IPv4().decode(nfpacket.payload, 0);
+      let stringified = nfpacket.payload.toString();
+      let clonedPacket = Object.assign({}, nfpacket, { payloadDecoded: decoded, payloadStringified: stringified });
+  
+      handleActions(rules['incoming'][packet.payloadDecoded.protocol.toString()][interface.zone].acceptAction, packet);
+      
+      nfpacket.setVerdict(NF_ACCEPT, 9999);
+    });
+
     interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
       let decoded = new IPv4().decode(nfpacket.payload, 0);
       let stringified = nfpacket.payload.toString();
@@ -231,7 +245,18 @@ function bindQueueHandlers () {
         nfpacket.setVerdict(NF_REQUEUE, 999);
       }
     });
-  })
+
+    interfaceLoggerQueueOut = nfq.createQueueHandler(parseInt('210' + interface.number), buffer, (nfpacket) => {
+      let decoded = new IPv4().decode(nfpacket.payload, 0);
+      let stringified = nfpacket.payload.toString();
+      let clonedPacket = Object.assign({}, nfpacket, { payloadDecoded: decoded, payloadStringified: stringified });
+  
+      handleActions(rules['ougoing'][packet.payloadDecoded.protocol.toString()][interface.zone].acceptAction, packet);
+      
+      nfpacket.setVerdict(NF_ACCEPT, 9999);
+    });
+  
+  });
 }
 
 console.log('Flushing rules...');
