@@ -1,6 +1,6 @@
 function write (fs, content) {
   return new Promise((resolve, reject) => {
-    fs.appendFile('./logs/test.js', content + '\n', (error) => {
+    fs.appendFile('./logs/logger.log', content + '\n', (error) => {
       if (error) {
         reject(error)
       } else {
