@@ -1,17 +1,17 @@
 const actions = require('./actions');
+const encoding = require('./encoding');
 const enums = require('./enums.js');
 
-const nfpacket = (dependencies) => {
-  if (Object.keys(dependencies).includes(['pcap', 'nfq'])) {
+module.exports = (dependencies) => (nfpacket) => {
+  if (Object.keys(dependencies).includes('nfq') && Object.keys(dependencies).includes('pcapIPv4')) {
     return Object.assign(
-      {},
       nfpacket,
-      enums,
-      actions(dependencies)
-    )
+      { actions: actions(dependencies) },
+      { encoding: encoding(dependencies.pcapIPv4)(nfpacket) },
+      { enum: enums },
+      { decoded: undefined }
+    );
   }
 
   return false;
 }
-
-module.exports = nfpacket;

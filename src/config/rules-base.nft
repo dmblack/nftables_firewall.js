@@ -7,6 +7,7 @@ table ip filter {
     meta mark 666 counter drop comment "NodeJS Rejected";
     meta mark 9999 counter comment "NodeJS Accepted - LOGGING";
     meta mark 999 counter accept comment "NodeJS Accepted";
+    ct state { established, related } counter accept;
     ct state { invalid, untracked } counter drop;
     counter;
   }
@@ -18,6 +19,7 @@ table ip filter {
     meta mark 777 counter reject with icmp type admin-prohibited;
     meta mark 9999 counter comment "NodeJS Accepted - LOGGING";
     meta mark 999 counter accept comment "NodeJS Accepted";
+    ct state { established, related } counter accept;
     ct state { invalid, untracked } counter drop;
     counter;
   }

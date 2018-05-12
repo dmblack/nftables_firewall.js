@@ -5,7 +5,7 @@ const IPv4 = require('pcap/decode/ipv4');
 const pcap = require('pcap');
 const { exec } = require('child_process');
 const nft = require('./nftables')({ exec: exec });
-const nfpacket = require('./nfpacket')({ nfq: nfq, pcap: pcap })
+const netFilterPacket = require('./nfpacket')({ nfq: nfq, pcapIPv4: IPv4 })
 const actions = require('./actions')({ fs: fs })
 
 // These are the NFQUEUE result handler options.
@@ -140,17 +140,17 @@ function determineVerdict (interface, packet, direction) {
   // Check if the source port is as our otherwise accepted outgoing destination port, but only on incoming connections
   // (Basically; established / releated comms)
   //    Required since 'logging' change complexity - but REQUIRES refactor
-  if (direction === 'incoming' && typeof rules['outgoing'][packet.payloadDecoded.protocol.toString()][interface.zone].ports !== 'undefined') {
-    if (typeof rules['outgoing'][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.sport] !== 'undefined') {
-      console.log('Incoming packet which has a sourceport listed in destination port lists');
-      if (rules['outgoing'][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.sport].policy && rules['outgoing'][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.sport].policy === 'allow') {
-        console.log("Possible Related Connection: %s", JSON.stringify(packet));
-        verdict.policy = NF_ACCEPT;
+  // if (direction === 'incoming' && typeof rules['outgoing'][packet.payloadDecoded.protocol.toString()][interface.zone].ports !== 'undefined') {
+  //   if (typeof rules['outgoing'][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.sport] !== 'undefined') {
+  //     console.log('Incoming packet which has a sourceport listed in destination port lists');
+  //     if (rules['outgoing'][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.sport].policy && rules['outgoing'][packet.payloadDecoded.protocol.toString()][interface.zone].ports[packet.payloadDecoded.payload.sport].policy === 'allow') {
+  //       console.log("Possible Related Connection: %s", JSON.stringify(packet));
+  //       verdict.policy = NF_ACCEPT;
 
-        return verdict;
-      }
-    }
-  }
+  //       return verdict;
+  //     }
+  //   }
+  // }
 
   // Check we even handle this protocol
   if (rules[direction][packet.payloadDecoded.protocol.toString()]) {
@@ -231,6 +231,11 @@ function updateOutput () {
 function bindQueueHandlers () {
   interfaces.forEach(interface => {
     interface.queueIn = nfq.createQueueHandler(parseInt(interface.number), buffer, (nfpacket) => {
+      let thisPacket = netFilterPacket(nfpacket);
+      
+      thisPacket.encoding.decode();
+
+      console.log(thisPacket);
       let decoded = new IPv4().decode(nfpacket.payload, 0);
       let stringified = nfpacket.payload.toString();
       let clonedPacket = Object.assign({}, nfpacket, { payloadDecoded: decoded, payloadStringified: stringified });
