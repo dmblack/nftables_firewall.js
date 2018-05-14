@@ -3,13 +3,18 @@ const encoding = require('./encoding');
 const enums = require('./enums.js');
 
 module.exports = (dependencies) => (nfpacket) => {
+  let state = {
+    nfpacket: nfpacket,
+    enums: enums
+  }
   if (Object.keys(dependencies).includes('nfq') && Object.keys(dependencies).includes('pcapIPv4')) {
     return Object.assign(
-      nfpacket,
-      { actions: actions(dependencies) },
-      { encoding: encoding(dependencies.pcapIPv4)(nfpacket) },
-      { enum: enums },
-      { decoded: undefined }
+      {},
+      {
+        actions: actions(dependencies)(state),
+        encoding: encoding(dependencies.pcapIPv4)(state),
+        state
+      }
     );
   }
 

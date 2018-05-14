@@ -1,13 +1,18 @@
-const actions = (depedencies) => ({
-  accept: (nfpacket) => {
-    return nfpacket.setVedrict(0, 'add ' + rule);
+const actions = (dependencies) => (state) => ({
+  accept: () => {
+    state.nfpacket
+      ? state.nfpacket.setVerdict(dependencies.enums.NF_ACCEPT)
+      : false
   },
-  reject: (nfpacket) => {
-    nfpacket.setVerdict(this.enums.NF_REJECT);
-    return this;
+  reject: () => {
+    state.nfpacket
+      ? state.nfpacket.setVerdict(dependencies.enums.NF_REJECT)
+      : false
   },
-  requeue: (filename) => {
-    return execute(exec, '-f ' + filename);
+  requeue: () => {
+    state.nfpacket
+      ? state.nfpacket.setVerdict(dependencies.enums.NF_REQUEUE)
+      : false
   }
 })
 

@@ -5,8 +5,8 @@ const IPv4 = require('pcap/decode/ipv4');
 const pcap = require('pcap');
 const { exec } = require('child_process');
 const nft = require('./nftables')({ exec: exec });
-const netFilterPacket = require('./nfpacket')({ nfq: nfq, pcapIPv4: IPv4 })
-const actions = require('./actions')({ fs: fs })
+const netFilterPacket = require('./nfpacket')({ nfq: nfq, pcapIPv4: IPv4 });
+const actions = require('./actions')({ fs: fs });
 
 // These are the NFQUEUE result handler options.
 const NF_DROP = 0;  // Drop the packet (There is no response or closure)
@@ -223,6 +223,83 @@ function determineVerdict (interface, packet, direction) {
   return verdict;
 }
 
+function handlePacket (interface, packet, direction) {
+  let verdict = {
+    policy: NF_DROP,
+    mark: 0
+  };
+
+  // Check we even handle this protocol
+  if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()]) {
+    // Check if the global (blanket) rule applies
+    if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.policy && rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.policy === 'allow') {
+      // Trigger the callback, if it exists..
+      if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.action) {
+        handleActions(rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.action, packet);
+        if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.action === 'log') {
+          verdict.mark = 9999;
+        }
+      }
+      // Check if the global setting has any specific ports
+      if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.ports) {
+        // Check, if there are ports, if the port is allowed.
+        if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport]) {
+          // Check if the policy is allow
+          if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].policy && rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].policy === 'allow') {
+            // Set to accept packet.
+            verdict.policy = NF_ACCEPT;
+          }
+          // Finally - if the port is allowed, check if there's a callback to trigger.
+          if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].action) {
+            handleActions(rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].action, packet);
+            if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].action === 'log') {
+              verdict.mark = 9999;
+            }
+          }
+          // Do not further traverse ruleset, or this function ; wasted cycles.
+          packet.state.nfpacket.setVerdict(verdict.policy, verdict.mark);
+        }
+        // The global default is enabled, yet there is no ports key..
+        //    (Likely) means this is a port-less protocol, or a blanket 'allow' rule is in place.
+      } else {
+        verdict.policy = NF_ACCEPT;
+        packet.state.nfpacket.setVerdict(verdict.policy, verdict.mark);
+      }
+      // Else, as if globally accepted we don't need to traverse other zones.
+    }
+    // Check if the protocol is zone allowed.
+    if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].policy && rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].policy === 'allow') {
+      // Trigger the protocol zone callback, if it exists.
+      if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].action) {
+        handleActions(rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].action, packet);
+        if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].action === 'log') {
+          verdict.mark = 9999;
+        }
+      }
+      // Check if the protocol's zone setting has any specific ports
+      if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].ports) {
+        // Check, if there are ports, if the port is allowed.
+        if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].ports[packet.state.nfpacketDecoded.payload.dport] && rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].ports[packet.state.nfpacketDecoded.payload.dport].policy && rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].ports[packet.state.nfpacketDecoded.payload.dport].policy === 'allow') {
+          verdict.policy = NF_ACCEPT;
+          // Finally - if the port is allowed, check if there's a callback to trigger.
+          if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].ports[packet.state.nfpacketDecoded.payload.dport].action) {
+            handleActions(rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].ports[packet.state.nfpacketDecoded.payload.dport].action, packet);
+            if (rules[direction][packet.state.nfpacketDecoded.protocol.toString()][interface.zone].ports[packet.state.nfpacketDecoded.payload.dport].action === 'log') {
+              verdict.mark = 9999;
+            }
+          }
+        }
+        // The global default is enabled, yet there are no ports.. which likely
+        //    Means this is a port-less protocol.
+      } else {
+        verdict.policy = NF_ACCEPT;
+      }
+    }
+  }
+
+  packet.state.nfpacket.setVerdict(verdict.policy, verdict.mark);
+}
+
 function updateOutput () {
   process.stdout.write('\x1Bc');
   process.stdout.write('Connections - Accepted: ' + packetsAccepted + ' (I: ' + packetsAcceptedIn + ' O: ' + packetsAcceptedOut + ') - Rejected: ' + packetsRejected + ' (I: ' + packetsRejectedIn + ' O: ' + packetsRejectedOut + ')\r');
@@ -232,29 +309,30 @@ function bindQueueHandlers () {
   interfaces.forEach(interface => {
     interface.queueIn = nfq.createQueueHandler(parseInt(interface.number), buffer, (nfpacket) => {
       let thisPacket = netFilterPacket(nfpacket);
-      
+
       thisPacket.encoding.decode();
 
-      console.log(thisPacket);
       let decoded = new IPv4().decode(nfpacket.payload, 0);
       let stringified = nfpacket.payload.toString();
       let clonedPacket = Object.assign({}, nfpacket, { payloadDecoded: decoded, payloadStringified: stringified });
 
-      let thisVerdict = determineVerdict(interface, clonedPacket, 'incoming');
+      handlePacket(interface, thisPacket, 'incoming');
 
-      if (thisVerdict.mark === 9999) {
-        console.log('Set mark to be 9999');
-      }
+      // let thisVerdict = determineVerdict(interface, clonedPacket, 'incoming');
 
-      if (thisVerdict.policy === NF_DROP) {
-        packetsRejected++;
-        packetsRejectedIn++;
-        nfpacket.setVerdict(thisVerdict.policy, thisVerdict.mark || 666);
-      } else {
-        packetsAccepted++;
-        packetsAcceptedIn++;
-        nfpacket.setVerdict(thisVerdict.policy, thisVerdict.mark || 999);
-      }
+      // if (thisVerdict.mark === 9999) {
+      //   console.log('Set mark to be 9999');
+      // }
+
+      // if (thisVerdict.policy === NF_DROP) {
+      //   packetsRejected++;
+      //   packetsRejectedIn++;
+      //   nfpacket.setVerdict(thisVerdict.policy, thisVerdict.mark || 666);
+      // } else {
+      //   packetsAccepted++;
+      //   packetsAcceptedIn++;
+      //   nfpacket.setVerdict(thisVerdict.policy, thisVerdict.mark || 999);
+      // }
     });
 
     interface.queueInLog = nfq.createQueueHandler(parseInt('200' + interface.number), buffer, (nfpacket) => {
@@ -268,29 +346,35 @@ function bindQueueHandlers () {
     });
 
     interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
+      let thisPacket = netFilterPacket(nfpacket);
+
+      thisPacket.encoding.decode();
+
       let decoded = new IPv4().decode(nfpacket.payload, 0);
       let stringified = nfpacket.payload.toString();
       let clonedPacket = Object.assign({}, nfpacket, { payloadDecoded: decoded, payloadStringified: stringified });
 
-      let thisVerdict = determineVerdict(interface, clonedPacket, 'outgoing');
+      handlePacket(interface, thisPacket, 'outgoing');
 
-      if (thisVerdict.mark === 9999) {
-        console.log('Set mark to be 9999');
-      }
+      // let thisVerdict = determineVerdict(interface, clonedPacket, 'outgoing');
 
-      // Allow us to set a META MARK for requeue and reject.
-      if (thisVerdict.policy === NF_DROP) {
-        packetsRejected++;
-        packetsRejectedOut++;
-        // Outgoing packets set META MARK 777 - allows use of REJECT
-        //    icmp-admin-prohibited (so connections fail immediately, instead
-        //    of timing out over a period of time... which is annoying locally)
-        nfpacket.setVerdict(thisVerdict.policy, thisVerdict.mark || 777);
-      } else {
-        packetsAccepted++;
-        packetsAcceptedOut++;
-        nfpacket.setVerdict(thisVerdict.policy, thisVerdict.mark || 999);
-      }
+      // if (thisVerdict.mark === 9999) {
+      //   console.log('Set mark to be 9999');
+      // }
+
+      // // Allow us to set a META MARK for requeue and reject.
+      // if (thisVerdict.policy === NF_DROP) {
+      //   packetsRejected++;
+      //   packetsRejectedOut++;
+      //   // Outgoing packets set META MARK 777 - allows use of REJECT
+      //   //    icmp-admin-prohibited (so connections fail immediately, instead
+      //   //    of timing out over a period of time... which is annoying locally)
+      //   nfpacket.setVerdict(thisVerdict.policy, thisVerdict.mark || 777);
+      // } else {
+      //   packetsAccepted++;
+      //   packetsAcceptedOut++;
+      //   nfpacket.setVerdict(thisVerdict.policy, thisVerdict.mark || 999);
+      // }
     });
 
     interfaceLoggerQueueOut = nfq.createQueueHandler(parseInt('210' + interface.number), buffer, (nfpacket) => {
