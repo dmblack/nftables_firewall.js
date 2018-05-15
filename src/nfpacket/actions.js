@@ -6,12 +6,12 @@ const actions = (dependencies) => (state) => ({
   },
   reject: () => {
     state.nfpacket
-      ? state.nfpacket.setVerdict(dependencies.enums.NF_REJECT)
+      ? state.nfpacket.setVerdict(dependencies.enums.NF_DROP)
       : false
   },
   requeue: () => {
     state.nfpacket
-      ? state.nfpacket.setVerdict(dependencies.enums.NF_REQUEUE)
+      ? state.nfpacket.setVerdict(dependencies.enums.NF_REPEAT)
       : false
   }
 })

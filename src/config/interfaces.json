@@ -1,4 +1,5 @@
 {
+  "detail": "This file should be copied into './config/' and setup as necessary.",
   "interfaces": {
     "lo": {
       "zone": "trusted"
@@ -10,7 +11,7 @@
       "zone": "trusted"
     },
     "wlp3s0b1": {
-      "zone": "trusted"
+      "zone": "untrusted"
     }
   }
 }

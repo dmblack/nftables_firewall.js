@@ -1,9 +1,12 @@
 module.exports = {
   netfilterVerdict: {
     // These are the NFQUEUE result handler options.
-    NF_REJECT: 0,
+    NF_DROP: 0,
     NF_ACCEPT: 1, // Accept packet (but no longer seen / disowned by conntrack,
-    NF_REQUEUE: 4, // Requeue packet (Which we then use a mark to determine the action,
+    NF_STOLEN: 2,
+    NF_QUEUE: 3,
+    NF_REPEAT: 4, // Requeue packet (Which we then use a mark to determine the action,
+    NF_STOP :5
   },
   protocols: {
     // Protocol Numbers can be found here, however; libpcap has limited support..
