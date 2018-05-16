@@ -122,66 +122,66 @@ function handleActions (action, packet) {
 
 function handlePacket (packet) {
   let verdict = {
-    policy: packet.state.enums.netfilterVerdict.NF_DROP,
+    policy: packet.enums.netfilterVerdict.NF_DROP,
     mark: 0
   };
 
   // Check we even handle this protocol
-  if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()]) {
+  if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()]) {
     // Check if the global (blanket) rule applies
-    if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.policy && rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.policy === 'allow') {
+    if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.policy === 'allow') {
       // Trigger the callback, if it exists..
-      if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.action) {
-        handleActions(rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.action, packet);
-        if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.action === 'log') {
+      if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.action) {
+        handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.action, packet);
+        if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.action === 'log') {
           verdict.mark = 9999;
         }
       }
       // Check if the global setting has any specific ports
-      if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.ports) {
+      if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports) {
         // Check, if there are ports, if the port is allowed.
-        if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport]) {
+        if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport]) {
           // Check if the policy is allow
-          if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].policy && rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].policy === 'allow') {
+          if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport].policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport].policy === 'allow') {
             // Set to accept packet.
-            verdict.policy = packet.state.enums.netfilterVerdict.NF_ACCEPT;
+            verdict.policy = packet.enums.netfilterVerdict.NF_ACCEPT;
           }
           // Finally - if the port is allowed, check if there's a callback to trigger.
-          if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].action) {
-            handleActions(rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].action, packet);
-            if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()].global.ports[packet.state.nfpacketDecoded.payload.dport].action === 'log') {
+          if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport].action) {
+            handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport].action, packet);
+            if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport].action === 'log') {
               verdict.mark = 9999;
             }
           }
           // Do not further traverse ruleset, or this function ; wasted cycles.
-          packet.state.nfpacket.setVerdict(verdict.policy, verdict.mark);
+          packet.nfpacket.setVerdict(verdict.policy, verdict.mark);
         }
         // The global default is enabled, yet there is no ports key..
         //    (Likely) means this is a port-less protocol, or a blanket 'allow' rule is in place.
       } else {
-        verdict.policy = packet.state.enums.netfilterVerdict.NF_ACCEPT;
-        packet.state.nfpacket.setVerdict(verdict.policy, verdict.mark);
+        verdict.policy = packet.enums.netfilterVerdict.NF_ACCEPT;
+        packet.nfpacket.setVerdict(verdict.policy, verdict.mark);
       }
       // Else, as if globally accepted we don't need to traverse other zones.
     }
     // Check if the protocol is zone allowed.
-    if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].policy && rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].policy === 'allow') {
+    if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].policy === 'allow') {
       // Trigger the protocol zone callback, if it exists.
-      if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].action) {
-        handleActions(rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].action, packet);
-        if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].action === 'log') {
+      if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].action) {
+        handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].action, packet);
+        if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].action === 'log') {
           verdict.mark = 9999;
         }
       }
       // Check if the protocol's zone setting has any specific ports
-      if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].ports) {
+      if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports) {
         // Check, if there are ports, if the port is allowed.
-        if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].ports[packet.state.nfpacketDecoded.payload.dport] && rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].ports[packet.state.nfpacketDecoded.payload.dport].policy && rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].ports[packet.state.nfpacketDecoded.payload.dport].policy === 'allow') {
-          verdict.policy = packet.state.enums.netfilterVerdict.NF_ACCEPT;
+        if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport] && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].policy === 'allow') {
+          verdict.policy = packet.enums.netfilterVerdict.NF_ACCEPT;
           // Finally - if the port is allowed, check if there's a callback to trigger.
-          if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].ports[packet.state.nfpacketDecoded.payload.dport].action) {
-            handleActions(rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].ports[packet.state.nfpacketDecoded.payload.dport].action, packet);
-            if (rules[packet.getDirection()][packet.state.nfpacketDecoded.protocol.toString()][packet.getInterface().zone].ports[packet.state.nfpacketDecoded.payload.dport].action === 'log') {
+          if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].action) {
+            handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].action, packet);
+            if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].action === 'log') {
               verdict.mark = 9999;
             }
           }
@@ -189,13 +189,12 @@ function handlePacket (packet) {
         // The global default is enabled, yet there are no ports.. which likely
         //    Means this is a port-less protocol.
       } else {
-        verdict.policy = packet.state.enums.netfilterVerdict.NF_ACCEPT;
+        verdict.policy = packet.enums.netfilterVerdict.NF_ACCEPT;
       }
     }
   }
 
-  console.log(verdict.policy);
-  packet.state.nfpacket.setVerdict(verdict.policy, verdict.mark);
+  packet.nfpacket.setVerdict(verdict.policy, verdict.mark);
 }
 
 function updateOutput () {
@@ -207,9 +206,9 @@ function bindQueueHandlers () {
   interfaces.forEach(interface => {
     interface.queueIn = nfq.createQueueHandler(parseInt(interface.number), buffer, (nfpacket) => {
       let thisPacket = netFilterPacket(nfpacket);
-      thisPacket.setDirection('incoming');
-      thisPacket.setInterface(interface);
-
+      thisPacket.direction = 'incoming';
+      thisPacket.interface = interface;
+      
       thisPacket.encoding.decode();
 
       handlePacket(thisPacket);
@@ -227,9 +226,9 @@ function bindQueueHandlers () {
 
     interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
       let thisPacket = netFilterPacket(nfpacket);
-      thisPacket.setDirection('outgoing');
-      thisPacket.setInterface(interface);
-
+      thisPacket.direction = 'outgoing';
+      thisPacket.interface = interface;
+      
       thisPacket.encoding.decode();
 
       handlePacket(thisPacket);
