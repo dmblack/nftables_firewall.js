@@ -11,6 +11,8 @@ I recommend you understand some basics of NFTables to otherwise reset your
 rules to a safe state before continuing. That way, in the event of any
 issue; you can quickly roll back to a 'safe' environment state.
 
+On that note, however; I, personally; use it as my day to day firewall.
+
 # Description
 This is an example managing nfQueue packed from within NodeJS.
 
