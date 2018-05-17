@@ -34,6 +34,14 @@ function checkConfig (err, filename) {
         fs.readFile('./config/interfaces.json', 'utf8', (err, data) => {
           if (err) throw err;
           let newInterfaces = JSON.parse(data);
+          Object.keys(newInterfaces.interfaces).forEach(interface => {
+            interfaces.forEach(thisInterface => {
+              if (thisInterface.name === interface && thisInterface.zone !== newInterfaces.interfaces[interface].zone) {
+                thisInterface.zone = newInterfaces.interfaces[interface].zone;
+              }
+            })
+          });
+
           systemInterfaces = newInterfaces.interfaces;
         });
         break;
@@ -147,14 +155,14 @@ function handlePacket (packet) {
             }
           }
           // Do not further traverse ruleset, or this function ; wasted cycles.
-          return packet.actions.verdict(packet.verdict, packet.mark);
+          return packet.verdicts.getVerdict();
           // packet.nfpacket.setVerdict(packet.verdict, packet.mark);
         }
         // The global default is enabled, yet there is no ports key..
         //    (Likely) means this is a port-less protocol, or a blanket 'allow' rule is in place.
       } else {
         packet.verdict = packet.enums.netfilterVerdict.NF_ACCEPT;
-        return packet.actions.verdict(packet.verdict, packet.mark);
+        return packet.verdicts.getVerdict();
         //packet.nfpacket.setVerdict(packet.verdict, packet.mark);
       }
       // Else, as if globally accepted we don't need to traverse other zones.
@@ -189,7 +197,7 @@ function handlePacket (packet) {
     }
   }
 
-  return packet.actions.verdict(packet.verdict, packet.mark);
+  return packet.verdicts.getVerdict();
 }
 
 function updateOutput () {
@@ -267,4 +275,4 @@ nft.flush().then(
   (err) => console.log('Failed to insert final counters: ' + err)
 );
 
-const outputInterval = setInterval(updateOutput, 5000);
+const outputInterval = setInterval(updateOutput, 25000);

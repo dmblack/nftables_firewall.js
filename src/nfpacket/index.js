@@ -1,4 +1,4 @@
-const actions = require('./actions');
+const verdicts = require('./verdicts');
 const encoding = require('./encoding');
 const enums = require('./enums.js');
 const statable = require('./../state');
@@ -17,7 +17,7 @@ module.exports = (dependencies) => (nfpacket) => {
     return Object.assign(
       state,
       {
-        actions: actions(dependencies)(state),
+        verdicts: verdicts(dependencies)(state),
         encoding: encoding(dependencies.pcapIPv4)(state)
       }
     );
