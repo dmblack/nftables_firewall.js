@@ -12,13 +12,15 @@ rules to a safe state before continuing. That way, in the event of any
 issue; you can quickly roll back to a 'safe' environment state.
 
 # Description
-This is an example of using NodeJS, and there in; javascript as a firewall.
+This is an example managing nfQueue packed from within NodeJS.
 
-A more so accurate description may also be;
-nfqueued packets, from nftables, managed by javascript.
+The overall 'result' is, effectively; a Firewall written in NodeJS.
 
-This is done by using lipcap, and nfqueue (With appropriate nftables rules)
-to queue packets to user space.
+To describe the topology;
+1) Packet received by nftables, queued to nfqueue (userspace)
+2) NodeJS listens on queue for packets, and handles appropriately.
+
+This is achieved by using lipcap, nftables, and nfqueue.
 
 # Dependencies
 * linux
@@ -44,25 +46,19 @@ I personally use;
 # Usage
 You can customize your rules within the *.json configuration files.
 
-In this current state; the app uses META MARKS to demonstrate the firewall 
-is actually functioning. The overall flow is;
- - Packet is picked up by nftables.
- - Packet runs over rules supplied by nodejs, marked (666 reject, 999 accept)
- - Packet is then requeued back to nftables (And accepted/dropped by meta
- filters)
-
 Output, when running, shows some basic stats of what has been achieved;
 
-`Connections - Accepted: 925 (I: 0 O: 925) - Rejected: 66 (I: 4 O: 62)`
+`Packets: 513 - IN: 39 (A: 0 - R: 39) - OUT: 474 (A: 264 - R: 210)`
 
-Where; I = Incomming, O = Outgoing.
+Where A: Accepted, R: Rejected (Determined; anything other than accepted)
 
 # Customisation
-Configuration files may be found in src/config.
+'Skeleton' Configuration files may be found in `src/config`, and should
+then be placed in `config/`.
 * interfaces.json - specify your trusted, and untrusted, interfaces.
 * rules.json - Specify what ports, in which 'trust' zones you want to allow
-* * Note: Changes to this file are 'hot loaded'. Care should be taken.
-* base.rules - Is the 'initial' template of rules deployed. (Creates the 
+  * Note: Changes to this file are 'hot loaded'. Care should be taken.
+* rules-base.nft - Is the 'initial' template of rules deployed. (Creates the 
 appropriate table, chains)
-* locked.rules - Is basically what the script 'should' fall back to if there
-are any failures on init (SHOULD..)
+* rules-locked.nft - Is basically what the script 'should' fall back to
+if there are any failures on init (SHOULD..)
