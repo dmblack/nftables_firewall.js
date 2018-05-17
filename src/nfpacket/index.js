@@ -8,7 +8,9 @@ module.exports = (dependencies) => (nfpacket) => {
     direction: undefined,
     enums: enums,
     interface: undefined,
+    mark: undefined,
     nfpacket: nfpacket,
+    verdict: enums.netfilterVerdict.NF_DROP
   });
 
   if (Object.keys(dependencies).includes('nfq') && Object.keys(dependencies).includes('pcapIPv4')) {
