@@ -5,6 +5,7 @@ const encoding = (dependencies) => (state) => ({
       ? new IPv4().decode(state.nfpacket.payload, 0)
       : false
     state.nfpacketDecoded = nfpacketDecoded;
+    state.nfpacketDecoded.payloadDecoded = state.nfpacketDecoded.payload.toString();
   }
 })
 
