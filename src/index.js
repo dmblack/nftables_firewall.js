@@ -39,14 +39,14 @@ function checkConfig (err, filename) {
               if (thisInterface.name === interface && thisInterface.zone !== newInterfaces.interfaces[interface].zone) {
                 thisInterface.zone = newInterfaces.interfaces[interface].zone;
               }
-            })
+            });
           });
 
           systemInterfaces = newInterfaces.interfaces;
         });
         break;
     }
-  }, 500)
+  }, 500);
 }
 
 // Some counters for connection analysis (Used for stdio)
@@ -61,11 +61,9 @@ let interfaces = [];
 // Sets base rules, with default to 'drop', but allows established and related connections.
 function insertFinalCounters () {
   return Promise.all([
-    nft.add('rule ip filter input ct state { established, related } counter accept'),
     nft.add('rule ip filter input counter'),
-    nft.add('rule ip filter output ct state { established, related } counter accept'),
     nft.add('rule ip filter output counter'),
-  ])
+  ]);
 }
 
 function insertInterfaceRules (interface) {
@@ -95,7 +93,7 @@ function runPromiseArrayInSequence (arr) {
   return arr.reduce((promiseChain, currentPromise) => {
     return promiseChain.then((chainedResult) => {
       return currentPromise(chainedResult)
-        .then((res) => res)
+        .then((res) => res);
     })
   }, Promise.resolve());
 }
@@ -134,9 +132,6 @@ function handlePacket (packet) {
       // Trigger the callback, if it exists..
       if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.action) {
         handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.action, packet);
-        if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.action === 'log') {
-          packet.mark = 9999;
-        }
       }
       // Check if the global setting has any specific ports
       if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports) {
@@ -150,14 +145,11 @@ function handlePacket (packet) {
           // Finally - if the port is allowed, check if there's a callback to trigger.
           if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport].action) {
             handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport].action, packet);
-            if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.dport].action === 'log') {
-              packet.mark = 9999;
-            }
           }
           // Do not further traverse ruleset, or this function ; wasted cycles.
           return packet.verdicts.getVerdict();
-          // packet.nfpacket.setVerdict(packet.verdict, packet.mark);
         }
+
         // The global default is enabled, yet there is no ports key..
         //    (Likely) means this is a port-less protocol, or a blanket 'allow' rule is in place.
       } else {
@@ -172,9 +164,6 @@ function handlePacket (packet) {
       // Trigger the protocol zone callback, if it exists.
       if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].action) {
         handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].action, packet);
-        if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].action === 'log') {
-          packet.mark = 9999;
-        }
       }
       // Check if the protocol's zone setting has any specific ports
       if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports) {
@@ -184,15 +173,42 @@ function handlePacket (packet) {
           // Finally - if the port is allowed, check if there's a callback to trigger.
           if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].action) {
             handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].action, packet);
-            if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].action === 'log') {
-              packet.mark = 9999;
-            }
           }
         }
         // The global default is enabled, yet there are no ports.. which likely
         //    Means this is a port-less protocol.
       } else {
         packet.verdict = packet.enums.netfilterVerdict.NF_ACCEPT;
+      }
+    }
+  }
+
+  // Handles 'related' connections
+  //  TO DO - Does not confirm state of a connection. Theoretically; this could be exploited.
+  //    Basically; actor could force outgoing port as a trusted port and ggwp.
+  if ((packet.direction) === 'incoming') {
+    if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()]) {
+      // console.log('Protocol: %s, sport: %s, dport: %s', packet.nfpacketDecoded.protocol.toString(), packet.nfpacketDecoded.payload.sport, packet.nfpacketDecoded.payload.dport);
+      if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()].global && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()].global.ports && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.sport]) {
+        // Check if the policy is allow
+        if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.sport].policy && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.sport].policy === 'allow') {
+          // Set to accept packet.
+          packet.verdict = packet.enums.netfilterVerdict.NF_ACCEPT;
+        }
+        // Finally - if the port is allowed, check if there's a callback to trigger.
+        if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.sport].action) {
+          handleActions(rules['outgoing'][packet.nfpacketDecoded.protocol.toString()].global.ports[packet.nfpacketDecoded.payload.sport].action, packet);
+        }
+        // Do not further traverse ruleset, or this function ; wasted cycles.
+        return packet.verdicts.getVerdict();
+        // packet.nfpacket.setVerdict(packet.verdict, packet.mark);
+      }
+    }
+    if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone] && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport] && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport].policy && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport].policy === 'allow') {
+      packet.verdict = packet.enums.netfilterVerdict.NF_ACCEPT;
+      // Finally - if the port is allowed, check if there's a callback to trigger.
+      if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport].action) {
+        handleActions(rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport].action, packet);
       }
     }
   }
@@ -275,4 +291,4 @@ nft.flush().then(
   (err) => console.log('Failed to insert final counters: ' + err)
 );
 
-const outputInterval = setInterval(updateOutput, 25000);
+const outputInterval = setInterval(updateOutput, 250);
