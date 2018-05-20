@@ -3,7 +3,7 @@ const encoding = (dependencies) => (state) => ({
     let IPv4 = dependencies || null;
     let nfpacketDecoded = IPv4
       ? new IPv4().decode(state.nfpacket.payload, 0)
-      : false
+      : false;
     state.nfpacketDecoded = nfpacketDecoded;
     if (state.nfpacketDecoded.payload.data) {
       let tempBuffer = Buffer.from(state.nfpacketDecoded.payload.data);
@@ -11,6 +11,6 @@ const encoding = (dependencies) => (state) => ({
     }
     state.nfpacketDecoded.payloadDecoded = state.nfpacketDecoded.payload.toString();
   }
-})
+});
 
 module.exports = encoding;

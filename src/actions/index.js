@@ -6,10 +6,10 @@ const actions = (dependencies) => {
       {},
       actions,
       filesystem(dependencies.fs)
-    )
+    );
   }
 
   return false;
-}
+};
 
 module.exports = actions;

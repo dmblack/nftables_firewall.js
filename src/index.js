@@ -2,7 +2,6 @@ const sysClassNetInterfaces = '/sys/class/net/';
 const fs = require('fs');
 const nfq = require('nfqueue');
 const IPv4 = require('pcap/decode/ipv4');
-const pcap = require('pcap');
 const { exec } = require('child_process');
 const nft = require('./nftables')({ exec: exec });
 const netFilterPacket = require('./nfpacket')({ nfq: nfq, pcapIPv4: IPv4 });
@@ -16,13 +15,13 @@ process.stdout.write('\x1Bc');
 let rules = require('./../config/rules.json').rules;
 let systemInterfaces = require('./../config/interfaces.json').interfaces;
 
-let configWatch = fs.watch('./config', checkConfig);
+fs.watch('./config', checkConfig);
 
-function checkConfig (err, filename) {
+function checkConfig (eventType, filename) {
   setTimeout(() => {
     switch (filename) {
       case 'rules.json':
-        console.log('Rules Configuration Changed - Reloding..')
+        console.log('Rules Configuration Changed - Reloding..');
         fs.readFile('./config/rules.json', 'utf8', (err, data) => {
           if (err) throw err;
           let newRules = JSON.parse(data);
@@ -30,14 +29,14 @@ function checkConfig (err, filename) {
         });
         break;
       case 'interfaces.json':
-        console.log('Interfaces Configuration Changed - Reloding..')
+        console.log('Interfaces Configuration Changed - Reloding..');
         fs.readFile('./config/interfaces.json', 'utf8', (err, data) => {
           if (err) throw err;
           let newInterfaces = JSON.parse(data);
-          Object.keys(newInterfaces.interfaces).forEach(interface => {
+          Object.keys(newInterfaces.interfaces).forEach(newNetworkInterface => {
             interfaces.forEach(thisInterface => {
-              if (thisInterface.name === interface && thisInterface.zone !== newInterfaces.interfaces[interface].zone) {
-                thisInterface.zone = newInterfaces.interfaces[interface].zone;
+              if (thisInterface.name === newNetworkInterface && thisInterface.zone !== newInterfaces.interfaces[newNetworkInterface].zone) {
+                thisInterface.zone = newInterfaces.interfaces[newNetworkInterface].zone;
               }
             });
           });
@@ -62,16 +61,16 @@ let interfaces = [];
 function insertFinalCounters () {
   return Promise.all([
     nft.add('rule ip filter input counter'),
-    nft.add('rule ip filter output counter'),
+    nft.add('rule ip filter output counter')
   ]);
 }
 
-function insertInterfaceRules (interface) {
+function insertInterfaceRules (networkInterface) {
   return Promise.all([
-    nft.add('rule ip filter input iif ' + interface.name + ' counter nftrace set 1 queue num ' + interface.number),
-    // nft.add('rule ip filter input iif ' + interface.name + ' meta mark 9999 counter nftrace set 1 queue num 200' + interface.number),
-    nft.add('rule ip filter output oif ' + interface.name + ' counter nftrace set 1 queue num 100' + interface.number),
-    // nft.add('rule ip filter output oif ' + interface.name + ' meta mark 9999 counter nftrace set 1 queue num 210' + interface.number)
+    nft.add('rule ip filter input iif ' + networkInterface.name + ' counter nftrace set 1 queue num ' + networkInterface.number),
+    // nft.add('rule ip filter input iif ' + networkInterface.name + ' meta mark 9999 counter nftrace set 1 queue num 200' + networkInterface.number),
+    nft.add('rule ip filter output oif ' + networkInterface.name + ' counter nftrace set 1 queue num 100' + networkInterface.number)
+    // nft.add('rule ip filter output oif ' + networkInterface.name + ' meta mark 9999 counter nftrace set 1 queue num 210' + networkInterface.number)
   ]);
 }
 
@@ -94,25 +93,25 @@ function runPromiseArrayInSequence (arr) {
     return promiseChain.then((chainedResult) => {
       return currentPromise(chainedResult)
         .then((res) => res);
-    })
+    });
   }, Promise.resolve());
 }
 
 function setupInterfaces () {
   let interfacePromises = [];
 
-  getInterfaces(sysClassNetInterfaces).forEach(interface => {
-    let zone = 'untrusted'
-    if (systemInterfaces[interface] && systemInterfaces[interface].zone) {
-      zone = systemInterfaces[interface].zone || 'untrusted';
+  getInterfaces(sysClassNetInterfaces).forEach(networkInterface => {
+    let zone = 'untrusted';
+    if (systemInterfaces[networkInterface] && systemInterfaces[networkInterface].zone) {
+      zone = systemInterfaces[networkInterface].zone || 'untrusted';
     }
-    let newInterface = { name: interface, number: interfaces.length + 1, zone };
-    interfacePromises.push(() => insertInterfaceRules(newInterface))
+    let newInterface = { name: networkInterface, number: interfaces.length + 1, zone };
+    interfacePromises.push(() => insertInterfaceRules(newInterface));
     interfaces.push(newInterface);
   });
 
-  return runPromiseArrayInSequence(interfacePromises)
-};
+  return runPromiseArrayInSequence(interfacePromises);
+}
 
 function handleActions (action, packet) {
   switch (action) {
@@ -155,24 +154,24 @@ function handlePacket (packet) {
       } else {
         packet.verdict = packet.enums.netfilterVerdict.NF_ACCEPT;
         return packet.verdicts.getVerdict();
-        //packet.nfpacket.setVerdict(packet.verdict, packet.mark);
+        // packet.nfpacket.setVerdict(packet.verdict, packet.mark);
       }
       // Else, as if globally accepted we don't need to traverse other zones.
     }
     // Check if the protocol is zone allowed.
-    if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].policy === 'allow') {
+    if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].policy === 'allow') {
       // Trigger the protocol zone callback, if it exists.
-      if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].action) {
-        handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].action, packet);
+      if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].action) {
+        handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].action, packet);
       }
       // Check if the protocol's zone setting has any specific ports
-      if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports) {
+      if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports) {
         // Check, if there are ports, if the port is allowed.
-        if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport] && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].policy === 'allow') {
+        if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.dport] && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.dport].policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.dport].policy === 'allow') {
           packet.verdict = packet.enums.netfilterVerdict.NF_ACCEPT;
           // Finally - if the port is allowed, check if there's a callback to trigger.
-          if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].action) {
-            handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.dport].action, packet);
+          if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.dport].action) {
+            handleActions(rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.dport].action, packet);
           }
         }
         // The global default is enabled, yet there are no ports.. which likely
@@ -204,11 +203,11 @@ function handlePacket (packet) {
         // packet.nfpacket.setVerdict(packet.verdict, packet.mark);
       }
     }
-    if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone] && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport] && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport].policy && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport].policy === 'allow') {
+    if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone] && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.sport] && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.sport].policy && rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.sport].policy === 'allow') {
       packet.verdict = packet.enums.netfilterVerdict.NF_ACCEPT;
       // Finally - if the port is allowed, check if there's a callback to trigger.
-      if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport].action) {
-        handleActions(rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.interface.zone].ports[packet.nfpacketDecoded.payload.sport].action, packet);
+      if (rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.sport].action) {
+        handleActions(rules['outgoing'][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].ports[packet.nfpacketDecoded.payload.sport].action, packet);
       }
     }
   }
@@ -225,12 +224,12 @@ function updateOutput () {
 }
 
 function bindQueueHandlers () {
-  interfaces.forEach(interface => {
-    interface.queueIn = nfq.createQueueHandler(parseInt(interface.number), buffer, (nfpacket) => {
+  interfaces.forEach(networkInterface => {
+    networkInterface.queueIn = nfq.createQueueHandler(parseInt(networkInterface.number), buffer, (nfpacket) => {
       packetsIn++;
       let thisPacket = netFilterPacket(nfpacket);
       thisPacket.direction = 'incoming';
-      thisPacket.interface = interface;
+      thisPacket.networkInterface = networkInterface;
 
       thisPacket.encoding.decode();
 
@@ -243,11 +242,11 @@ function bindQueueHandlers () {
       verdict();
     });
 
-    interface.queueOut = nfq.createQueueHandler(parseInt('100' + interface.number), buffer, (nfpacket) => {
+    networkInterface.queueOut = nfq.createQueueHandler(parseInt('100' + networkInterface.number), buffer, (nfpacket) => {
       packetsOut++;
       let thisPacket = netFilterPacket(nfpacket);
       thisPacket.direction = 'outgoing';
-      thisPacket.interface = interface;
+      thisPacket.networkInterface = networkInterface;
 
       thisPacket.encoding.decode();
 
@@ -266,7 +265,7 @@ console.log('Flushing rules...');
 nft.flush().then(
   (resolved) => {
     console.log('Injecting NFTables base ruleset...');
-    nft.inject('./src/config/rules-base.nft')
+    nft.inject('./src/config/rules-base.nft');
   },
   (reject) => console.log('Failed to flush rules: ' + reject)
 ).then(
@@ -291,4 +290,4 @@ nft.flush().then(
   (err) => console.log('Failed to insert final counters: ' + err)
 );
 
-const outputInterval = setInterval(updateOutput, 250);
+setInterval(updateOutput, 250);

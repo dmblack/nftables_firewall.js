@@ -24,4 +24,4 @@ module.exports = (dependencies) => (nfpacket) => {
   }
 
   return false;
-}
+};

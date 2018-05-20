@@ -12,17 +12,17 @@ module.exports = (type) => (initialState) => {
     if (type === 'immutable') {
       return Object.freeze(Object.assign(
         state,
-        immutable(state),
+        immutable(state)
       ));
     }
-    
+
     if (type === 'mutable') {
       return Object.assign(
         state,
-        mutable(state),
-      )
+        mutable(state)
+      );
     }
   }
 
   return state;
-}
+};
