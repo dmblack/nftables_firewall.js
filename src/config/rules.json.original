@@ -1,0 +1,253 @@
+{
+  "detail": "This file should be copied into './config/' and setup as necessary.",
+  "rules": {
+    "incoming": {
+      "_1": "ICMP",
+      "1": {
+        "global": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "trusted": {
+          "allowed": true,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "untrusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        }
+      },
+      "_2": "IGMP",
+      "2": {
+        "global": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "trusted": {
+          "allowed": true,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "untrusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        }
+      },
+      "_6": "TCP",
+      "6": {
+        "global": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "trusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "untrusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        }
+      },
+      "_17": "UDP",
+      "17": {
+        "global": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "trusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "untrusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        }
+      }
+    },
+    "outgoing": {
+      "_1": "ICMP",
+      "1": {
+        "global": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "trusted": {
+          "allowed": true,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "untrusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        }
+      },
+      "_2": "IGMP",
+      "2": {
+        "global": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "trusted": {
+          "allowed": true,
+          "acceptAction": null,
+          "rejectAction": null
+        },
+        "untrusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        }
+      },
+      "_6": "TCP",
+      "6": {
+        "global": {
+          "allowed": true,
+          "acceptAction": null,
+          "rejectAction": null,
+          "ports": {
+            "443": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "993": {
+              "acceptAction": null,
+              "rejectAction": null
+            }
+          }
+        },
+        "trusted": {
+          "allowed": true,
+          "acceptAction": null,
+          "rejectAction": null,
+          "ports": {
+            "22": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "80": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "139": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "445": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "465": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "1880": {
+              "acceptAction": null,
+              "rejectAction": null              
+            },
+            "1900": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "2083": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "2087": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "2096": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "3142": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "9092": {
+              "acceptAction": null,
+              "rejectAction": null
+            }
+          }
+        },
+        "untrusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        }
+      },
+      "_17": "UDP",
+      "17": {
+        "global": {
+          "allowed": true,
+          "acceptAction": null,
+          "rejectAction": null,
+          "ports": {
+            "53": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "500": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "1701": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "4500": {
+              "acceptAction": null,
+              "rejectAction": null
+            }
+          }
+        },
+        "trusted": {
+          "allowed": true,
+          "acceptAction": null,
+          "rejectAction": null,
+          "ports": {
+            "123": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "137": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "138": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "1900": {
+              "acceptAction": null,
+              "rejectAction": null
+            },
+            "5353": {
+              "acceptAction": null,
+              "rejectAction": null
+            }
+          }
+        },
+        "untrusted": {
+          "allowed": false,
+          "acceptAction": null,
+          "rejectAction": null
+        }
+      }
+    }
+  }
+}

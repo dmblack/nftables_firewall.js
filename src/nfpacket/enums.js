@@ -1,3 +1,32 @@
+const netfilterVerdict = {
+  NF_DROP: 0,
+  NF_ACCEPT: 1,
+  NF_STOLEN: 2,
+  NF_QUEUE: 3,
+  NF_REPEAT: 4,
+  NF_STOP: 5
+}
+
+const protocols = {
+  PC_ICMP: 1,
+  PC_IGMP: 2,
+  PC_TCP: 6,
+  PC_UDP: 17
+}
+
+const ruleVerdict = {
+  accept: netfilterVerdict.NF_ACCEPT,
+  drop: netfilterVerdict.NF_DROP,
+  reject: netfilterVerdict.NF_DROP
+}
+
+module.exports = {
+  netfilterVerdict,
+  protocols,
+  ruleVerdict
+}
+
+  /*
 module.exports = {
   netfilterVerdict: {
     // These are the NFQUEUE result handler options.
@@ -15,5 +44,11 @@ module.exports = {
     PC_IGMP: 2,
     PC_TCP: 6,
     PC_UDP: 17
+  },
+  ruleVerdict: {
+    accept: this.netfilterVerdict.NF_ACCEPT,
+    drop: this.netfilterVerdict.NF_DROP,
+    reject: this.netfilterVerdict.NF_DROP
   }
 };
+*/

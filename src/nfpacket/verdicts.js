@@ -4,8 +4,14 @@ module.exports = (dependencies) => (state) => ({
       ? state.nfpacket.setVerdict(state.enums.netfilterVerdict.NF_ACCEPT, state.mark)
       : false;
   },
+  deny: () => {
+    // Should alias to reject..
+    return state.nfpacket
+      ? state.nfpacket.setVerdict(state.enums.netfilterVerdict.NF_DROP, state.mark)
+      : false;
+  },
   reject: () => {
-    // This allows us to admin-prohibit and immediately reject outgoing, intead of droop (timeout).
+    // This allows us to admin-prohibit and immediately reject outgoing, intead of drop (timeout).
     if (state.direction === 'outgoing') {
       return state.nfpacket.setVerdict(state.enums.netfilterVerdict.NF_REPEAT, 777);
     } else {

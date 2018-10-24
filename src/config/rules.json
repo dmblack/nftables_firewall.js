@@ -5,73 +5,65 @@
       "_1": "ICMP",
       "1": {
         "global": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         },
         "trusted": {
-          "allowed": true,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "accept"
         },
         "untrusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         }
       },
       "_2": "IGMP",
       "2": {
         "global": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         },
         "trusted": {
-          "allowed": true,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "accept"
         },
         "untrusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         }
       },
       "_6": "TCP",
       "6": {
         "global": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         },
         "trusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "accept",
+          "ports": {
+            "8953": {
+              "policy": "accept"
+            },
+            "8955": {
+              "policy": "accept"
+            }
+          }
         },
         "untrusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         }
       },
       "_17": "UDP",
       "17": {
         "global": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         },
         "trusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "accept",
+          "ports": {
+            "53": {
+              "policy": "accept"
+            },
+            "8953": {
+              "policy": "accept"
+            }
+          }
         },
         "untrusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         }
       }
     },
@@ -79,173 +71,133 @@
       "_1": "ICMP",
       "1": {
         "global": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         },
         "trusted": {
-          "allowed": true,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "accept"
         },
         "untrusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         }
       },
       "_2": "IGMP",
       "2": {
         "global": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         },
         "trusted": {
-          "allowed": true,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "accept"
         },
         "untrusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         }
       },
       "_6": "TCP",
       "6": {
         "global": {
-          "allowed": true,
-          "acceptAction": null,
-          "rejectAction": null,
+          "policy": "accept",
           "ports": {
             "443": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "993": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             }
           }
         },
         "trusted": {
-          "allowed": true,
-          "acceptAction": null,
-          "rejectAction": null,
+          "policy": "accept",
           "ports": {
             "22": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "80": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "139": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "445": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "465": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "1880": {
-              "acceptAction": null,
-              "rejectAction": null              
+              "policy": "accept"
             },
             "1900": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "2083": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "2087": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "2096": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "3142": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "9092": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             }
           }
         },
         "untrusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         }
       },
       "_17": "UDP",
       "17": {
         "global": {
-          "allowed": true,
-          "acceptAction": null,
-          "rejectAction": null,
+          "policy": "reject",
           "ports": {
-            "53": {
-              "acceptAction": null,
-              "rejectAction": null
-            },
             "500": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
+            },
+            "1194": {
+              "policy": "accept"
             },
             "1701": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "4500": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             }
           }
         },
         "trusted": {
-          "allowed": true,
-          "acceptAction": null,
-          "rejectAction": null,
+          "policy": "accept",
           "ports": {
+            "53": {
+              "policy": "accept"
+            },
             "123": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "137": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "138": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "1900": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
             },
             "5353": {
-              "acceptAction": null,
-              "rejectAction": null
+              "policy": "accept"
+            },
+            "9981": {
+              "policy": "accept",
+              "action": "log"
             }
           }
         },
         "untrusted": {
-          "allowed": false,
-          "acceptAction": null,
-          "rejectAction": null
+          "policy": "reject"
         }
       }
     }

@@ -1,3 +1,6 @@
+//
+// Rewrite to enable nodewatch CD
+//
 const sysClassNetInterfaces = '/sys/class/net/';
 const fs = require('fs');
 const nfq = require('nfqueue');
@@ -12,8 +15,8 @@ const buffer = 131070;
 
 process.stdout.write('\x1Bc');
 
-let rules = require('./../config/rules.json').rules;
-let systemInterfaces = require('./../config/interfaces.json').interfaces;
+let rules = require('./config/rules.json').rules;
+let systemInterfaces = require('./config/interfaces.json').interfaces;
 
 fs.watch('./config', checkConfig);
 
@@ -123,7 +126,127 @@ function handleActions (action, packet) {
   }
 }
 
-function handlePacket (packet) {
+function handlePacket1(packet) {
+  // Set our default action (Reject!)Reject
+  rule = getRule(packet);
+  packet.verdict = typeof(rule) === 'undefined'
+    ? packet.enums.netfilterVerdict.NF_REJECT
+    : packet.enums.netfilterVerdict[rule.policy];
+
+  console.log(rule);
+  packet.action = typeof (rule) === 'undefined'
+    ? undefined
+    : rule.action;
+
+  packet.action = undefined;
+
+  if (typeof(getRule(packet)) !== 'undefined') {
+    packet.verdict = getRule(packet)
+  }
+
+  return packet.verdicts.getVerdict();
+}
+
+const findRule = (packet) => {
+  // direction
+  // protocol
+  // zone
+  // *port (not applicable for some protocols)
+  const direction = packet.direction;
+  const protocol = packet.nfpacketDecoded.protocol.toString();
+  const zone = packet.networkInterface.zone || 'untrusted';
+  const targetPort = packet.nfpacketDecoded.payload.dport || undefined;
+  const sourcePort = packet.nfpacketDecoded.payload.sport || undefined;
+  const flags = packet.nfpacketDecoded.payload.flags || undefined;
+  packet.verdict = undefined;
+
+  // Check if related connection
+  if (targetPort && sourcePort) {
+      // catch explicit rule direction, protocol, zone, and port
+      if (rules[direction] && rules[direction][protocol] && rules[direction][protocol][zone] && rules[direction][protocol][zone].ports) {
+        packet.verdict = rules[direction][protocol][zone].ports[targetPort]
+          ? packet.enums.ruleVerdict[rules[direction][protocol][zone].ports[targetPort].policy]
+          : undefined;
+        packet.action = rules[direction][protocol][zone].ports[targetPort]
+          ? rules[direction][protocol][zone].ports[targetPort].action
+          : undefined;
+      }
+
+    if (typeof(packet.verdict) !== 'undefined') {
+      console.log('We found an explicit rule for direction: %s, zone: %s, protocol: %s, target port: %s', direction, zone, protocol, targetPort);
+    }
+
+
+
+      // Catch 'global' zone policy
+      if (rules[direction] && rules[direction][protocol] && rules[direction][protocol].global && typeof(packet.verdict) === 'undefined') {
+        if (rules[direction][protocol].global.ports) {
+          packet.verdict = rules[direction][protocol].global.ports[targetPort]
+            ? packet.enums.ruleVerdict[rules[direction][protocol].global.ports[targetPort].policy]
+            : undefined;
+          packet.action = rules[direction][protocol].global.ports[targetPort]
+            ? rules[direction][protocol].global.ports[targetPort].action
+            : undefined;
+        } else {
+          packet.verdict = rules[direction][protocol].global
+            ? packet.enums.ruleVerdict[rules[direction][protocol].global.policy]
+            : undefined;
+          packet.action = rules[direction][protocol].global
+            ? rules[direction][protocol].global.action
+            : undefined;
+        }
+        if (typeof(packet.verdict) !== 'undefined') {
+          console.log('We found a global rule for direction: %s, zone: %s, protocol: %s, target port: %s', direction, zone, protocol, targetPort);
+        }
+
+      }
+
+      // Catch 'zone' default policy (Eg; trusted; accept)
+      if (rules[direction] && rules[direction][protocol] && rules[direction][protocol][zone] && typeof(packet.verdict) === 'undefined') {
+         packet.verdict = rules[direction][protocol][zone]
+           ? packet.enums.ruleVerdict[rules[direction][protocol][zone].policy]
+           : undefined;
+         packet.action = rules[direction][protocol][zone]
+           ? rules[direction][protocol][zone].action
+           : undefined;
+         if (typeof(packet.verdict) !== 'undefined') {
+           console.log('We found a default zone policy for direction: %s, zone: %s, protocol: %s, target port: %s', direction, zone, protocol, targetPort);
+         }
+       }
+
+    } else {
+      if (rules[direction] && rules[direction][protocol] && rules[direction][protocol][zone] && typeof(packet.verdict) === 'undefined') {
+        packet.verdict = rules[direction][protocol][zone]
+          ? packet.enums.ruleVerdict[rules[direction][protocol][zone].policy]
+          : undefined;
+        packet.action = rules[direction][protocol][zone]
+          ? rules[direction][protocol][zone].action
+          : undefined;
+      } else if (rules[direction] && rules[direction][protocol] && rules[direction][protocol].global && typeof(packet.verdict) === 'undefined') {
+        packet.verdict= rules[direction][protocol].global
+          ? packet.enums.ruleVerdict[rules[direction][protocol].global.policy]
+          : undefined;
+        packet.action = rules[direction][protocol].global
+          ? rules[direction][protocol].global.action
+          : undefined;
+      }
+  }
+
+
+  if (typeof(packet.verdict) === 'unefined') {
+       console.log('We did not find a rule for zone: %s, direction %s, protocol, %s, packet target port: %s', zone, direction, protocol, targetPort);
+  } else {
+    console.log('Verdict: %s', packet.verdict)
+  }
+}
+
+function handlePacket(packet) {
+  findRule(packet);
+  if (packet.action) { handleActions(packet.action, packet) }
+  return packet.verdicts.getVerdict();
+}
+
+function noLongerUsed(packet) {
   // Check we even handle this protocol
   if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()]) {
     // Check if the global (blanket) rule applies
@@ -157,6 +280,10 @@ function handlePacket (packet) {
         // packet.nfpacket.setVerdict(packet.verdict, packet.mark);
       }
       // Else, as if globally accepted we don't need to traverse other zones.
+      // Correction; We need to handle globally 'rejected' rules..
+      // Propose a rewite of how rules are determined and handled - associated with actions;
+      // Find most appropriate rule (regardless of policy)
+      // Return that rule, and it's association actions etc.
     }
     // Check if the protocol is zone allowed.
     if (rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].policy && rules[packet.direction][packet.nfpacketDecoded.protocol.toString()][packet.networkInterface.zone].policy === 'allow') {
@@ -290,4 +417,4 @@ nft.flush().then(
   (err) => console.log('Failed to insert final counters: ' + err)
 );
 
-setInterval(updateOutput, 250);
+setInterval(updateOutput, 250000);

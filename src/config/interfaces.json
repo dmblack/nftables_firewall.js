@@ -4,13 +4,13 @@
     "lo": {
       "zone": "trusted"
     },
-    "enp2s0f0": {
+    "enp0s25": {
       "zone": "untrusted"
     },
-    "ppp0": {
+    "tun0": {
       "zone": "trusted"
     },
-    "wlp3s0b1": {
+    "wlo1": {
       "zone": "untrusted"
     }
   }
