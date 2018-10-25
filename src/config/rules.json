@@ -5,31 +5,36 @@
       "_1": "ICMP",
       "1": {
         "global": {
-          "policy": "reject"
+          "policy": "reject",
+          "action": "log"
         },
         "trusted": {
           "policy": "accept"
         },
         "untrusted": {
-          "policy": "reject"
+          "policy": "reject",
+          "action": "log"
         }
       },
       "_2": "IGMP",
       "2": {
         "global": {
-          "policy": "reject"
+          "policy": "reject",
+          "action": "log"
         },
         "trusted": {
           "policy": "accept"
         },
         "untrusted": {
-          "policy": "reject"
+          "policy": "reject",
+          "action": "log"
         }
       },
       "_6": "TCP",
       "6": {
         "global": {
-          "policy": "reject"
+          "policy": "reject",
+          "action": "log"
         },
         "trusted": {
           "policy": "accept",
@@ -43,13 +48,15 @@
           }
         },
         "untrusted": {
-          "policy": "reject"
+          "policy": "reject",
+          "action": "log"
         }
       },
       "_17": "UDP",
       "17": {
         "global": {
-          "policy": "reject"
+          "policy": "reject",
+          "action": "log"
         },
         "trusted": {
           "policy": "accept",
@@ -63,7 +70,8 @@
           }
         },
         "untrusted": {
-          "policy": "reject"
+          "policy": "reject",
+          "action": "log"
         }
       }
     },
@@ -191,8 +199,7 @@
               "policy": "accept"
             },
             "9981": {
-              "policy": "accept",
-              "action": "log"
+              "policy": "accept"
             }
           }
         },

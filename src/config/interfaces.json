@@ -1,17 +1,21 @@
 {
   "detail": "This file should be copied into './config/' and setup as necessary.",
   "interfaces": {
-    "lo": {
-      "zone": "trusted"
-    },
     "enp0s25": {
       "zone": "untrusted"
     },
-    "tun0": {
+    "lo": {
       "zone": "trusted"
     },
+    "tun0": {
+      "zone": "trusted",
+      "required": "true",
+      "persistent": "true"
+    },
     "wlo1": {
-      "zone": "untrusted"
+      "zone": "untrusted",
+      "required": "true",
+      "persistent": "true"
     }
   }
 }

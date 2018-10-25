@@ -1,4 +1,4 @@
-const rules = require('./rules');
+const rules = require('./rules')
 
 const nft = (dependencies) => {
   if (Object.keys(dependencies).includes('exec')) {
@@ -6,10 +6,10 @@ const nft = (dependencies) => {
       {},
       nft,
       rules(dependencies.exec)
-    );
+    )
   }
 
-  return false;
-};
+  return false
+}
 
-module.exports = nft;
+module.exports = nft

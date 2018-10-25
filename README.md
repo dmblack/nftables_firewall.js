@@ -36,6 +36,10 @@ some build directly from sources like github - you may require things like
 * libnetfilter-queue-dev
 * libnfnetlink-dev
 
+## Note:
+Some child dependencies have not been updated in some time failing builds
+with later versions of NodeJS. For best results; use LTS/Carbon (8)
+
 # Getting Started
 Clone this repo within git, cd, and `npm install`.
 
@@ -46,7 +50,17 @@ I personally use;
 ```sudo `which node` src/index.js```
 
 # Usage
-You can customize your rules within the *.json configuration files.
+You can customize your rules within the *.json configuration files. To
+ensure you take some responsibility, these are then loaded from a 'config'
+folder in the root directory of the project. I symlink them;
+```
+mkdir config
+cd config
+ln -s ../src/config/rules.json .
+ln -s ../src/config/interfaces.json .
+ln -s ../src/config/rules-base.nft .
+ln -s ../src/config/rules-locked.nft .
+```
 
 Output, when running, shows some basic stats of what has been achieved;
 
@@ -56,11 +70,17 @@ Where A: Accepted, R: Rejected (Determined; anything other than accepted)
 
 # Customisation
 'Skeleton' Configuration files may be found in `src/config`, and should
-then be placed in `config/`.
+then be placed in `config/` - as mentioned above'
 * interfaces.json - specify your trusted, and untrusted, interfaces.
 * rules.json - Specify what ports, in which 'trust' zones you want to allow
   * Note: Changes to this file are 'hot loaded'. Care should be taken.
-* rules-base.nft - Is the 'initial' template of rules deployed. (Creates the 
+* rules-base.nft - Is the 'initial' template of rules deployed. (Creates the
 appropriate table, chains)
 * rules-locked.nft - Is basically what the script 'should' fall back to
 if there are any failures on init (SHOULD..)
+
+# Further notes:
+Interfaces are detected, with appropriate rules created, upon start. This
+can be troublesome for non-persistent interfaces such as vpn (ppp/tun). I
+restart the scrupt upon these interfaces becoming available. (And this will
+be fixed in an upcoming release)

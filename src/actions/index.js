@@ -1,4 +1,4 @@
-const filesystem = require('./filesystem');
+const filesystem = require('./filesystem')
 
 const actions = (dependencies) => {
   if (Object.keys(dependencies).includes('fs')) {
@@ -6,10 +6,10 @@ const actions = (dependencies) => {
       {},
       actions,
       filesystem(dependencies.fs)
-    );
+    )
   }
 
-  return false;
-};
+  return false
+}
 
-module.exports = actions;
+module.exports = actions

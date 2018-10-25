@@ -16,7 +16,7 @@ module.exports = (dependencies) => (state) => ({
       return state.nfpacket.setVerdict(state.enums.netfilterVerdict.NF_REPEAT, 777);
     } else {
       return state.nfpacket
-        ? state.nfpacket.setVerdict(state.enums.netfilterVerdict.NF_DROP, state.mark)
+        ? state.nfpacket.setVerdict(state.enums.netfilterVerdict.NF_REPEAT, 666)
         : false;
     }
   },
