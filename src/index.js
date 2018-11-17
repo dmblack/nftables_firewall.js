@@ -1,6 +1,11 @@
 //
 // Rewrite to enable nodewatch CD
 //
+
+/*
+Restructure packet object - super messy.
+*/
+
 console.log(process.env.debug)
 const debug = process.env.debug === 1
 const sysClassNetInterfaces = '/sys/class/net/'
@@ -71,9 +76,8 @@ function insertFinalCounters () {
 }
 
 function insertInterfaceRules (networkInterface) {
-  console.log('This network interface: %s', networkInterface);
-  const interfaceSelector = typeof(networkInterface.persistent) !== 'undefined'
-    ? networkInterface.persistent === true
+  let interfaceSelector = typeof (networkInterface.persistent) !== 'undefined'
+    ? networkInterface.persistent === "true"
       ? 'if'
       : 'ifname'
     : 'ifname'
@@ -113,17 +117,14 @@ function setupInterfaces () {
   let interfacePromises = []
 
   getInterfaces(sysClassNetInterfaces).forEach(networkInterface => {
-    let zone = 'untrusted'
-    if (systemInterfaces[networkInterface]) {
-      zone = systemInterfaces[networkInterface].zone
-        ? systemInterfaces[networkInterface].zone
-        : 'untrusted'
-      persistent = systemInterfaces[networkInterface].persistent
-        ? systemInterfaces[networkInterface].persistent
-        : false
+    const zone = typeof (systemInterfaces[networkInterface]) !== undefined
+      ? systemInterfaces[networkInterface].zone
+      : 'untrusted'
+    const persistent = typeof (systemInterfaces[networkInterface]) !== 'undefined'
+      ? systemInterfaces[networkInterface].persistent
+      : false;
 
-    }
-    let newInterface = { name: networkInterface, number: interfaces.length + 1, zone, }
+    const newInterface = { name: networkInterface, number: interfaces.length + 1, zone, persistent }
     interfacePromises.push(() => insertInterfaceRules(newInterface))
     interfaces.push(newInterface)
   })
@@ -141,7 +142,7 @@ function handleActions (action, packet) {
   }
 }
 
-const findRule = (packet) => {
+const associateRule = (packet) => {
   // direction
   // protocol
   // zone
@@ -222,15 +223,17 @@ const findRule = (packet) => {
     }
   }
 
-  if (typeof (packet.verdict) === 'unefined' && debug) {
+  if (typeof (packet.verdict) === 'undefined' && debug) {
     console.log('We did not find a rule for zone: %s, direction %s, protocol, %s, packet target port: %s', zone, direction, protocol, targetPort)
   } else if (debug) {
     console.log('Verdict: %s', packet.verdict)
   }
+
+  return packet;
 }
 
 function handlePacket (packet) {
-  findRule(packet)
+  associateRule(packet)
   if (packet.action) { handleActions(packet.action, packet) }
   return packet.verdicts.getVerdict()
 }

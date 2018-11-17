@@ -5,29 +5,25 @@
       "_1": "ICMP",
       "1": {
         "global": {
-          "policy": "reject",
-          "action": "log"
+          "policy": "reject"
         },
         "trusted": {
           "policy": "accept"
         },
         "untrusted": {
-          "policy": "reject",
-          "action": "log"
+          "policy": "reject"
         }
       },
       "_2": "IGMP",
       "2": {
         "global": {
-          "policy": "reject",
-          "action": "log"
+          "policy": "reject"
         },
         "trusted": {
           "policy": "accept"
         },
         "untrusted": {
-          "policy": "reject",
-          "action": "log"
+          "policy": "reject"
         }
       },
       "_6": "TCP",
@@ -39,6 +35,15 @@
         "trusted": {
           "policy": "accept",
           "ports": {
+            "3000": {
+              "policy": "accept"
+            },
+            "8080": {
+              "policy": "accept"
+            },
+            "8443": {
+              "policy": "accept"
+            },
             "8953": {
               "policy": "accept"
             },
@@ -55,23 +60,18 @@
       "_17": "UDP",
       "17": {
         "global": {
-          "policy": "reject",
-          "action": "log"
+          "policy": "reject"
         },
         "trusted": {
           "policy": "accept",
           "ports": {
-            "53": {
-              "policy": "accept"
-            },
             "8953": {
               "policy": "accept"
             }
           }
         },
         "untrusted": {
-          "policy": "reject",
-          "action": "log"
+          "policy": "reject"
         }
       }
     },
@@ -149,6 +149,9 @@
             "3142": {
               "policy": "accept"
             },
+            "8080": {
+              "policy": "accept"
+            },
             "9092": {
               "policy": "accept"
             }
@@ -163,6 +166,9 @@
         "global": {
           "policy": "reject",
           "ports": {
+            "53": {
+              "policy": "accept"
+            },
             "500": {
               "policy": "accept"
             },
