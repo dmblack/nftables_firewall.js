@@ -17,7 +17,7 @@
       "persistent": "false"
     },
     "wlo1": {
-      "zone": "trusted",
+      "zone": "untrusted",
       "required": "true",
       "persistent": "true"
     }

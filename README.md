@@ -28,7 +28,7 @@ This is achieved by using lipcap, nftables, and nfqueue.
 * linux
 * nftables
 
-To successfully build some of the child dependencies with `npm install`, as
+To successfully build some of the child dependencies with `yarn install`, as
 some build directly from sources like github - you may require things like
 (From a Debian system)
 * build-essential
@@ -41,7 +41,7 @@ Some child dependencies have not been updated in some time failing builds
 with later versions of NodeJS. For best results; use LTS/Carbon (8)
 
 # Getting Started
-Clone this repo within git, cd, and `npm install`.
+Clone this repo within git, cd, and `yarn install`.
 
 Once running, you must initialize the app with sudo (Due to use of libpcap).
 
