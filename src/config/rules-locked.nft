@@ -4,10 +4,12 @@ table ip filter {
   chain input {
     type filter hook input priority 0; policy drop;
     iif lo accept;
+    counter reject with icmp type host-unreachable;
   }
   
   chain output {
-    type filter hook input priority 0; policy drop;
+    type filter hook output priority 0; policy drop;
     oif lo accept;
+    counter reject with icmp type admin-prohibited;
   }
 }
